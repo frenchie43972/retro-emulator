@@ -17,6 +17,11 @@ def make_hucard_rom(*, reset_vector: int = 0x8000) -> bytes:
     return bytes(rom)
 
 
+def make_sound_test_rom(*, reset_vector: int = 0x8000) -> bytes:
+    """Minimal ROM scaffold used to validate PSG register side effects."""
+    return make_hucard_rom(reset_vector=reset_vector)
+
+
 class TurboGrafx16PlatformTests(unittest.TestCase):
     def test_hucard_loads_and_cpu_executes_from_reset_vector(self):
         platform = PluginLoader().load("turbografx16")
@@ -46,6 +51,37 @@ class TurboGrafx16PlatformTests(unittest.TestCase):
         platform.cpu.bus.write(0x0010, 0x77)
 
         self.assertEqual(platform.cpu.bus.read(0x0010), 0x77)
+
+    def test_psg_register_writes_generate_audible_output(self):
+        platform = PluginLoader().load("turbografx16")
+        runtime = EmulatorRuntime(
+            platform,
+            FrameBufferVideoOutput(),
+            BufferedAudioOutput(),
+            KeyboardInputProvider(),
+        )
+
+        runtime.initialize(make_sound_test_rom())
+
+        # Map logical $E000-$FFFF to physical bank $FF where hardware registers live.
+        platform.cpu.bank_registers.set_register(7, 0xFF)
+
+        # Program channel 0 waveform RAM with a ramp and enable playback.
+        platform.cpu.bus.write(0xE100, 0x00)  # channel select
+        platform.cpu.bus.write(0xE106, 0x00)  # waveform index
+        for level in range(32):
+            platform.cpu.bus.write(0xE107, level)
+
+        platform.cpu.bus.write(0xE102, 0x80)  # frequency low
+        platform.cpu.bus.write(0xE103, 0x01)  # frequency high
+        platform.cpu.bus.write(0xE104, 0x1F)  # max volume
+        platform.cpu.bus.write(0xE105, 0x01)  # channel enable
+
+        platform.audio.step(10_000)
+        samples = platform.audio.pull_samples()
+
+        self.assertGreater(len(samples), 0)
+        self.assertTrue(any(abs(sample) > 0.001 for sample in samples))
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from emulator.bus import MappedMemoryBus
 from emulator.interfaces import MemoryDevice
 
+from .audio import TG16PSG
 from .hucard_loader import LoadedHuCard
 from .video import HuC6270VDC
 from .tg16_ram import TG16RAM
@@ -15,18 +16,24 @@ from .tg16_ram import TG16RAM
 class TG16HardwareRegisters(MemoryDevice):
     """TurboGrafx hardware register block with VDC integration."""
 
-    def __init__(self, vdc: HuC6270VDC) -> None:
+    def __init__(self, vdc: HuC6270VDC, psg: TG16PSG) -> None:
         self.vdc = vdc
+        self.psg = psg
         self._data = bytearray(0x400)
 
     def read(self, address: int) -> int:
         if 0x000 <= address <= 0x003:
             return self.vdc.read(address)
+        if 0x100 <= address <= 0x10F:
+            return self.psg.read(address - 0x100)
         return self._data[address & 0x3FF]
 
     def write(self, address: int, value: int) -> None:
         if 0x000 <= address <= 0x003:
             self.vdc.write(address, value)
+            return
+        if 0x100 <= address <= 0x10F:
+            self.psg.write(address - 0x100, value)
             return
         self._data[address & 0x3FF] = value & 0xFF
 
@@ -58,15 +65,17 @@ class TG16MemoryMap:
     ram: TG16RAM
     registers: TG16HardwareRegisters
     vdc: HuC6270VDC
+    psg: TG16PSG
 
     @classmethod
-    def create(cls, bus: MappedMemoryBus, vdc: HuC6270VDC) -> "TG16MemoryMap":
+    def create(cls, bus: MappedMemoryBus, vdc: HuC6270VDC, psg: TG16PSG) -> "TG16MemoryMap":
         instance = cls(
             bus=bus,
             rom=HuCardROMDevice(),
             ram=TG16RAM(),
-            registers=TG16HardwareRegisters(vdc),
+            registers=TG16HardwareRegisters(vdc, psg),
             vdc=vdc,
+            psg=psg,
         )
         instance.attach()
         return instance
