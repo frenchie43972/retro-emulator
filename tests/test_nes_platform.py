@@ -168,8 +168,8 @@ class NESPPURenderTests(unittest.TestCase):
         self.assertIsNotNone(video_out.last_frame)
         frame = video_out.last_frame
         assert frame is not None
-        first = frame.pixels[(4 * frame.width + 4) * 4 : (4 * frame.width + 4) * 4 + 4]
-        later = frame.pixels[(20 * frame.width + 20) * 4 : (20 * frame.width + 20) * 4 + 4]
+        first = frame.pixels[(4 * frame.width + 4) * 3 : (4 * frame.width + 4) * 3 + 3]
+        later = frame.pixels[(20 * frame.width + 20) * 3 : (20 * frame.width + 20) * 3 + 3]
         self.assertNotEqual(first, later)
 
 
@@ -227,6 +227,46 @@ def make_apu_sound_test_rom(*, reset_vector: int = 0xC000) -> bytes:
     prg[0x3FFD] = (reset_vector >> 8) & 0xFF
 
     return bytes(header) + bytes(prg)
+
+
+class NESPPUTimingTests(unittest.TestCase):
+    def test_ppu_completes_frame_at_261_340_boundary(self):
+        platform = PluginLoader().load("nes")
+        ppu = platform.video
+
+        total_ppu_cycles = 262 * 341
+        ppu.step(total_ppu_cycles - 1)
+
+        self.assertFalse(ppu.frame_ready())
+        self.assertEqual(ppu.current_scanline, 261)
+        self.assertEqual(ppu.current_cycle, 340)
+
+        ppu.step(1)
+
+        self.assertTrue(ppu.frame_ready())
+        self.assertEqual(ppu.current_scanline, 0)
+        self.assertEqual(ppu.current_cycle, 0)
+
+    def test_runtime_advances_nes_ppu_at_three_to_one_ratio(self):
+        platform = PluginLoader().load("nes")
+        video_out = FrameBufferVideoOutput()
+        runtime = EmulatorRuntime(
+            platform,
+            video_out,
+            BufferedAudioOutput(),
+            KeyboardInputProvider(),
+        )
+        runtime.initialize(make_bootable_ines_rom())
+
+        start_scanline = platform.video.current_scanline
+        start_cycle = platform.video.current_cycle
+
+        cycles = platform.cpu.step(platform.bus)
+        platform.video.step(cycles * platform.video.ppu_cycles_per_cpu_cycle)
+
+        progressed = (platform.video.current_scanline * 341 + platform.video.current_cycle) - (start_scanline * 341 + start_cycle)
+        self.assertEqual(progressed, cycles * 3)
+
 
 
 class NESAPUTests(unittest.TestCase):
