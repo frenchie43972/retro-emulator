@@ -1,5 +1,3 @@
-"""NES platform plugin package."""
-
-from .nes_platform import NESPlatform, PlatformPlugin
+"""NES platform package."""
 
 __all__ = ["NESPlatform", "PlatformPlugin"]

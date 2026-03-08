@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .base import CartridgeMetadata, LoadedCartridge
-from .mappers import Mapper0NROM
+from .mappers import create_mapper
 
 
 class CartridgeLoadError(ValueError):
@@ -45,8 +45,6 @@ class INESParser:
         flags7 = header[7]
 
         mapper = (flags7 & 0xF0) | (flags6 >> 4)
-        if mapper != 0:
-            raise CartridgeLoadError(f"Unsupported NES mapper {mapper}; only mapper 0 is supported")
 
         trainer_size = 512 if (flags6 & 0x04) else 0
         has_battery_ram = bool(flags6 & 0x02)
@@ -78,7 +76,7 @@ class INESParser:
             metadata=metadata,
             prg_rom=prg_rom,
             chr_rom=chr_rom,
-            mapper=Mapper0NROM(),
+            mapper=_create_mapper_or_error(mapper),
             ram_size=0x2000,
         )
 
@@ -105,3 +103,10 @@ class CartridgeLoader:
         except OSError as exc:
             raise CartridgeLoadError(f"Could not read ROM file '{rom_path}': {exc}") from exc
         return self.load_bytes(rom_bytes)
+
+
+def _create_mapper_or_error(mapper_number: int):
+    try:
+        return create_mapper(mapper_number)
+    except ValueError as exc:
+        raise CartridgeLoadError(str(exc)) from exc

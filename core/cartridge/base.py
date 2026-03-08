@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from emulator.bus import MappedMemoryBus
-from emulator.interfaces import MemoryDevice
+from platforms.nes.mappers import NESMapper
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class LoadedCartridge:
         metadata: CartridgeMetadata,
         prg_rom: bytes,
         chr_rom: bytes,
-        mapper: "CartridgeMapper",
+        mapper: NESMapper,
         ram_size: int = 0,
     ) -> None:
         self.metadata = metadata
@@ -43,14 +43,26 @@ class LoadedCartridge:
         self.chr_rom = chr_rom
         self.mapper = mapper
         self.ram = bytearray(ram_size) if ram_size else None
+        self.chr_ram = bytearray(0x2000) if not chr_rom else bytearray()
 
     def read(self, address: int) -> int:
         """Read from a cartridge CPU address in mapper space."""
-        return self.mapper.read(self, address)
+        return self.mapper.cpu_read(self, address)
 
     def write(self, address: int, value: int) -> None:
         """Write to a cartridge CPU address in mapper space."""
-        self.mapper.write(self, address, value)
+        self.mapper.cpu_write(self, address, value)
+
+    def ppu_read(self, address: int) -> int:
+        """Read from a cartridge PPU pattern table address."""
+        return self.mapper.ppu_read(self, address & 0x1FFF)
+
+    def ppu_write(self, address: int, value: int) -> None:
+        """Write to a cartridge PPU pattern table address."""
+        self.mapper.ppu_write(self, address & 0x1FFF, value)
+
+    def mirroring(self) -> str:
+        return self.mapper.mirroring(self)
 
     def attach_to_bus(self, bus: MappedMemoryBus) -> None:
         """Register mapper-provided regions on the memory bus."""
@@ -75,16 +87,5 @@ class LoadedCartridge:
         self.ram[:] = data
 
 
-class CartridgeMapper:
-    """Mapper contract for converting cartridge data into bus-visible regions."""
-
-    def cpu_mappings(
-        self, cartridge: LoadedCartridge
-    ) -> list[tuple[int, int, MemoryDevice]]:  # pragma: no cover - interface method
-        raise NotImplementedError
-
-    def read(self, cartridge: LoadedCartridge, address: int) -> int:  # pragma: no cover
-        raise NotImplementedError
-
-    def write(self, cartridge: LoadedCartridge, address: int, value: int) -> None:  # pragma: no cover
-        raise NotImplementedError
+class CartridgeMapper(NESMapper):
+    """Backward-compatible alias for NES mapper interface."""
