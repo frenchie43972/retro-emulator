@@ -96,3 +96,14 @@ class NESMemoryMap:
 
     def reset(self) -> None:
         self.ram.reset()
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "ram": self.ram.serialize_state(),
+            "controllers": self.controllers.serialize_state(),
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.ram.deserialize_state(state["ram"])
+        self.controllers.deserialize_state(state["controllers"])

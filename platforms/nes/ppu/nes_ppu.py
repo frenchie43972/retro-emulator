@@ -132,6 +132,26 @@ class NESPPU(VideoProcessor, MemoryDevice):
             self.memory.write(self.registers.vram_addr, value)
             self.registers.increment()
 
+
+    def serialize_state(self) -> dict:
+        return {
+            "memory": self.memory.serialize_state(),
+            "registers": self.registers.serialize_state(),
+            "sprites": self.sprite_system.serialize_state(),
+            "scanline": self._scanline,
+            "cycle": self._cycle,
+            "frame_ready": self._frame_ready,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.memory.deserialize_state(state["memory"])
+        self.registers.deserialize_state(state["registers"])
+        self.sprite_system.deserialize_state(state["sprites"])
+        self._scanline = int(state["scanline"])
+        self._cycle = int(state["cycle"])
+        self._frame_ready = bool(state["frame_ready"])
+        self._render_frame()
+
     def _render_frame(self) -> None:
         frame_indexes = self.background_renderer.render(
             self.memory,

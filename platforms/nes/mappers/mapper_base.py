@@ -42,3 +42,9 @@ class NESMapper:
 
     def mirroring(self, cartridge: "LoadedCartridge") -> str:
         return cartridge.metadata.mirroring
+
+    def serialize_state(self) -> dict:
+        return {}
+
+    def deserialize_state(self, state: dict) -> None:
+        _ = state

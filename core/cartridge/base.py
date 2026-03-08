@@ -69,6 +69,27 @@ class LoadedCartridge:
         for start, end, device in self.mapper.cpu_mappings(self):
             bus.register(start, end, device)
 
+
+    def serialize_state(self) -> dict:
+        return {
+            "ram": bytes(self.ram) if self.ram is not None else None,
+            "chr_ram": bytes(self.chr_ram),
+            "mapper": self.mapper.serialize_state(),
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        ram = state.get("ram")
+        if self.ram is not None and ram is not None:
+            if len(ram) != len(self.ram):
+                raise ValueError("Cartridge RAM size mismatch in save state")
+            self.ram[:] = ram
+        chr_ram = state.get("chr_ram")
+        if chr_ram is not None:
+            if len(chr_ram) != len(self.chr_ram):
+                raise ValueError("Cartridge CHR RAM size mismatch in save state")
+            self.chr_ram[:] = chr_ram
+        self.mapper.deserialize_state(state.get("mapper", {}))
+
     def save_ram(self, path: Path) -> None:
         """Persist battery RAM contents to disk when RAM is present."""
         if self.ram is None:

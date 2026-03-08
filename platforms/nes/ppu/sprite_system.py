@@ -65,3 +65,13 @@ class SpriteSystem:
 
                     palette_addr = 0x3F10 + palette_select * 4 + color_bits
                     frame[y][x] = memory.read(palette_addr) & 0x3F
+
+
+    def serialize_state(self) -> dict:
+        return {"oam": bytes(self.oam)}
+
+    def deserialize_state(self, state: dict) -> None:
+        oam = state["oam"]
+        if len(oam) != len(self.oam):
+            raise ValueError("PPU OAM size mismatch in save state")
+        self.oam[:] = oam

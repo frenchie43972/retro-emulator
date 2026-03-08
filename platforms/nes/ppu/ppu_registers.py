@@ -40,3 +40,30 @@ class PPURegisters:
             self.status |= 0x80
         else:
             self.status &= ~0x80
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "ctrl": self.ctrl,
+            "mask": self.mask,
+            "status": self.status,
+            "oam_addr": self.oam_addr,
+            "scroll_x": self.scroll_x,
+            "scroll_y": self.scroll_y,
+            "vram_addr": self.vram_addr,
+            "temp_addr": self._temp_addr,
+            "write_toggle": self._write_toggle,
+            "data_buffer": self._data_buffer,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.ctrl = int(state["ctrl"])
+        self.mask = int(state["mask"])
+        self.status = int(state["status"])
+        self.oam_addr = int(state["oam_addr"])
+        self.scroll_x = int(state["scroll_x"])
+        self.scroll_y = int(state["scroll_y"])
+        self.vram_addr = int(state["vram_addr"])
+        self._temp_addr = int(state["temp_addr"])
+        self._write_toggle = bool(state["write_toggle"])
+        self._data_buffer = int(state["data_buffer"])
