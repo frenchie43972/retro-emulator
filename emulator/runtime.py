@@ -33,8 +33,9 @@ class EmulatorRuntime:
         self.config = config or RuntimeConfig()
 
     def initialize(self, rom_bytes: bytes) -> None:
-        """Load cartridge and reset all platform components."""
+        """Load cartridge, map it into memory, and reset all components."""
         self.platform.cartridge.load(rom_bytes)
+        self.platform.cartridge.attach_to_bus(self.platform.bus)
         self.platform.reset()
 
     def run_frame(self) -> None:
