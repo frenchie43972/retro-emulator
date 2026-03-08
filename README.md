@@ -34,3 +34,14 @@ The repository includes a `null_platform` plugin that acts as a non-console refe
 - `core/cartridge/loader.py` detects and parses ROM formats. The initial implementation supports NES iNES files.
 - `core/cartridge/mappers.py` currently implements NES Mapper 0 (NROM) PRG ROM mapping with optional save RAM at `$6000-$7FFF`.
 - Platform plugins choose how cartridges are interpreted. The new `platforms/nes` plugin delegates parsing to `CartridgeLoader` and attaches mapper-provided regions to the shared memory bus.
+
+
+## ROM browser frontend
+
+A simple ROM browsing/launching frontend now lives under `frontend/rom_browser/`.
+
+- `rom_scanner.py`: recursively scans configured directories for `.nes` files and parses metadata (file name/path, platform, size, mapper).
+- `rom_library.py`: stores discovered ROMs, supports refreshing, and tracks user selection.
+- `rom_launcher.py`: resolves the platform plugin from ROM metadata, loads the cartridge, resets platform state, and starts the runtime loop.
+- `rom_browser_ui.py`: keyboard-driven controller for up/down selection, launch on Enter, and return/exit on Escape.
+- `config.py`: loads ROM directories from `rom_browser_config.json`.
