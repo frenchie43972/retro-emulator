@@ -1,5 +1,6 @@
 """Frontend video backends."""
 
-from .pygame_video_window import PygameUnavailableError, PygameVideoWindow
+from .pygame_window import PygameUnavailableError, PygameWindowRenderer
+from .pygame_video_window import PygameVideoWindow
 
-__all__ = ["PygameVideoWindow", "PygameUnavailableError"]
+__all__ = ["PygameWindowRenderer", "PygameVideoWindow", "PygameUnavailableError"]

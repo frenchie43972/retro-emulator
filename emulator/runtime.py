@@ -35,6 +35,7 @@ class EmulatorRuntime:
         self.input_provider = input_provider
         self.config = config or RuntimeConfig()
         self.save_state_manager: SaveStateManager | None = None
+        self._video_sink_connected = False
 
     def initialize(self, rom_bytes: bytes) -> None:
         """Load cartridge, map it into memory, and reset all components."""
@@ -42,6 +43,7 @@ class EmulatorRuntime:
         self.platform.cartridge.attach_to_bus(self.platform.bus)
         self.platform.reset()
         self._initialize_save_system()
+        self._connect_video_pipeline()
         self._load_persistent_ram_if_supported()
 
     def initialize_from_file(self, rom_path: str | Path) -> None:
@@ -52,6 +54,7 @@ class EmulatorRuntime:
         self.platform.cartridge.attach_to_bus(self.platform.bus)
         self.platform.reset()
         self._initialize_save_system()
+        self._connect_video_pipeline()
         self._load_persistent_ram_if_supported()
 
     def run_frame(self) -> None:
@@ -66,7 +69,12 @@ class EmulatorRuntime:
             self.platform.audio.step(cycles)
 
             if self.platform.video.frame_ready():
-                self.video_output.display(self.platform.video.consume_frame())
+                frame = self.platform.video.consume_frame()
+                if not self._video_sink_connected:
+                    if hasattr(self.video_output, "render_frame"):
+                        self.video_output.render_frame(frame)
+                    else:
+                        self.video_output.display(frame)
 
             samples = self.platform.audio.pull_samples()
             if samples:
@@ -91,6 +99,12 @@ class EmulatorRuntime:
         key_states = self.input_provider.poll()
         for key, pressed in key_states.items():
             self.platform.controller.set_button_state(key, pressed)
+
+    def _connect_video_pipeline(self) -> None:
+        self._video_sink_connected = False
+        if hasattr(self.platform.video, "set_frame_sink") and hasattr(self.video_output, "render_frame"):
+            self.platform.video.set_frame_sink(self.video_output.render_frame)
+            self._video_sink_connected = True
 
     def _initialize_save_system(self) -> None:
         rom_key = "default"
