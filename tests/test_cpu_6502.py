@@ -2,6 +2,7 @@ import unittest
 
 from emulator.bus import MappedMemoryBus, RAM
 from platforms.nes.cpu_6502.cpu import (
+    FLAG_BREAK,
     FLAG_CARRY,
     FLAG_INTERRUPT_DISABLE,
     FLAG_NEGATIVE,
@@ -402,6 +403,66 @@ class MOS6502CPUTests(unittest.TestCase):
         self.assertEqual(self.cpu.y, 0x50)
         self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
         self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_pha_and_pla_round_trip_updates_stack_and_flags(self):
+        self._load_program([
+            0xA9,
+            0x00,  # LDA #$00
+            0x48,  # PHA
+            0xA9,
+            0x80,  # LDA #$80
+            0x48,  # PHA
+            0x68,  # PLA => $80
+            0x68,  # PLA => $00
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.bus.read(0x01FD), 0x00)
+        self.assertEqual(self.cpu.stack_pointer, 0xFC)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.bus.read(0x01FC), 0x80)
+        self.assertEqual(self.cpu.stack_pointer, 0xFB)
+
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.a, 0x80)
+        self.assertEqual(self.cpu.stack_pointer, 0xFC)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.a, 0x00)
+        self.assertEqual(self.cpu.stack_pointer, 0xFD)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+    def test_php_and_plp_round_trip_restores_status(self):
+        self.cpu.status = FLAG_CARRY | FLAG_NEGATIVE
+        self._load_program([
+            0x08,  # PHP
+            0x18,  # CLC
+            0xB8,  # CLV
+            0x58,  # CLI
+            0x28,  # PLP
+        ])
+
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.bus.read(0x01FD), FLAG_CARRY | FLAG_NEGATIVE | FLAG_BREAK | 0x20)
+        self.assertEqual(self.cpu.stack_pointer, 0xFC)
+
+        self.cpu.step(self.bus)
+        self.cpu.step(self.bus)
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.stack_pointer, 0xFD)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+        self.assertEqual(self.cpu.status & FLAG_BREAK, FLAG_BREAK)
 
 
 if __name__ == "__main__":
