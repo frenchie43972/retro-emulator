@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from emulator.io import BufferedAudioOutput, FrameBufferVideoOutput, KeyboardInputProvider
 from emulator.plugin import PluginLoader
 from emulator.runtime import EmulatorRuntime
-from frontend.video import PygameUnavailableError, PygameVideoWindow
+from frontend.video import PygameUnavailableError, PygameWindowRenderer
 
 from .rom_library import ROMEntry
 
@@ -29,13 +29,13 @@ class ROMLauncher:
         input_provider = KeyboardInputProvider()
 
         video_output = FrameBufferVideoOutput()
-        if platform.name == "turbografx16":
+        if platform.name in {"turbografx16", "nes"}:
             try:
-                video_output = PygameVideoWindow(
+                video_output = PygameWindowRenderer(
                     width=256,
                     height=240,
                     scale=3,
-                    title="TurboGrafx-16",
+                    title="TurboGrafx-16" if platform.name == "turbografx16" else "Nintendo Entertainment System",
                     input_provider=input_provider,
                 )
             except PygameUnavailableError as exc:

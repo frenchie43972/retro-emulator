@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from core.cartridge.base import LoadedCartridge
 from emulator.interfaces import FrameBuffer, MemoryDevice, VideoProcessor
@@ -43,9 +44,14 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self._cycle = 0
         self._frame_ready = False
         self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=b"\x00" * (NES_WIDTH * NES_HEIGHT * 4))
+        self._frame_sink: Callable[[FrameBuffer], None] | None = None
 
     def set_cartridge(self, cartridge: LoadedCartridge | None) -> None:
         self.memory.set_cartridge(cartridge)
+
+    def set_frame_sink(self, frame_sink: Callable[[FrameBuffer], None] | None) -> None:
+        """Set optional callback invoked whenever a frame finishes rendering."""
+        self._frame_sink = frame_sink
 
     def reset(self) -> None:
         self.registers.reset()
@@ -173,3 +179,5 @@ class NESPPU(VideoProcessor, MemoryDevice):
                 cursor += 4
 
         self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=bytes(pixels))
+        if self._frame_sink is not None:
+            self._frame_sink(self._frame)
