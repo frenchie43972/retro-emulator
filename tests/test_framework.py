@@ -53,7 +53,7 @@ class CartridgeLoaderTests(unittest.TestCase):
     def test_rejects_unsupported_mapper(self):
         loader = CartridgeLoader()
         with self.assertRaises(CartridgeLoadError):
-            loader.load_bytes(make_ines_rom(mapper=2))
+            loader.load_bytes(make_ines_rom(mapper=99))
 
     def test_mapper0_bus_mapping_and_save_ram(self):
         loader = CartridgeLoader()

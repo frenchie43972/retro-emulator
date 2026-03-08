@@ -37,12 +37,13 @@ class PPUMemory:
         self._palette_ram[self._map_palette_address(local)] = value
 
     def _read_pattern(self, address: int) -> int:
-        if self._cartridge is not None and self._cartridge.chr_rom:
-            return self._cartridge.chr_rom[address]
+        if self._cartridge is not None:
+            return self._cartridge.ppu_read(address)
         return self._chr_ram[address]
 
     def _write_pattern(self, address: int, value: int) -> None:
-        if self._cartridge is not None and self._cartridge.chr_rom:
+        if self._cartridge is not None:
+            self._cartridge.ppu_write(address, value)
             return
         self._chr_ram[address] = value
 
@@ -50,9 +51,13 @@ class PPUMemory:
         mirrored = (address - 0x2000) % 0x1000
         table = mirrored // 0x400
         offset = mirrored % 0x400
-        mirroring = self._cartridge.metadata.mirroring if self._cartridge is not None else "horizontal"
+        mirroring = self._cartridge.mirroring() if self._cartridge is not None else "horizontal"
         if mirroring == "vertical":
             physical_table = table % 2
+        elif mirroring == "single0":
+            physical_table = 0
+        elif mirroring == "single1":
+            physical_table = 1
         else:
             physical_table = table // 2
         return physical_table * 0x400 + offset

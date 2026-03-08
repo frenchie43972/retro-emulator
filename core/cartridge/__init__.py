@@ -7,7 +7,7 @@ implementations in :class:`CartridgeLoader`.
 
 from .base import CartridgeMetadata, LoadedCartridge
 from .loader import CartridgeLoader, CartridgeLoadError
-from .mappers import Mapper0NROM
+from .mappers import Mapper0NROM, Mapper1MMC1, Mapper2UxROM, Mapper3CNROM, create_mapper
 
 __all__ = [
     "CartridgeLoadError",
@@ -15,4 +15,8 @@ __all__ = [
     "CartridgeMetadata",
     "LoadedCartridge",
     "Mapper0NROM",
+    "Mapper1MMC1",
+    "Mapper2UxROM",
+    "Mapper3CNROM",
+    "create_mapper",
 ]
