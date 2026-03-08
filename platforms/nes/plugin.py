@@ -8,18 +8,9 @@ from pathlib import Path
 from core.cartridge import CartridgeLoader
 from core.cartridge.base import LoadedCartridge
 from emulator.bus import MappedMemoryBus, RAM
-from emulator.interfaces import AudioProcessor, CPU, Cartridge, Controller, FrameBuffer, MemoryBus, VideoProcessor
+from emulator.interfaces import AudioProcessor, Cartridge, Controller, FrameBuffer, MemoryBus, VideoProcessor
 from emulator.platform import Platform
-
-
-class NESCPU(CPU):
-    def reset(self) -> None:
-        self.pc = 0x8000
-
-    def step(self, bus: MemoryBus) -> int:
-        _ = bus.read(self.pc)
-        self.pc = (self.pc + 1) & 0xFFFF
-        return 1
+from platforms.nes.cpu_6502 import MOS6502CPU
 
 
 class NESVideo(VideoProcessor):
@@ -108,7 +99,7 @@ class PlatformPlugin:
 
         return Platform(
             name="nes",
-            cpu=NESCPU(),
+            cpu=MOS6502CPU(bus),
             video=NESVideo(),
             audio=NESAudio(),
             cartridge=NESCartridge(),
