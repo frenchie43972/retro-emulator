@@ -283,6 +283,126 @@ class MOS6502CPUTests(unittest.TestCase):
         self.assertEqual(self.cpu.step(self.bus), 6)
         self.assertEqual(self.cpu.a, 0x50)
 
+    def test_cpx_immediate_updates_flags_and_preserves_register(self):
+        self._load_program([
+            0xA2,
+            0x50,  # LDX #$50
+            0xE0,
+            0x40,  # CPX #$40 (X > M)
+            0xE0,
+            0x50,  # CPX #$50 (X == M)
+            0xE0,
+            0x60,  # CPX #$60 (X < M)
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.x, 0x50)
+
+        cycles = self.cpu.step(self.bus)
+        self.assertEqual(cycles, 2)
+        self.assertEqual(self.cpu.x, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.x, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.x, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_cpx_zero_page_and_absolute_modes(self):
+        self.bus.write(0x0010, 0x20)
+        self.bus.write(0x1234, 0x60)
+
+        self._load_program([
+            0xA2,
+            0x50,  # LDX #$50
+            0xE4,
+            0x10,  # CPX $10
+            0xEC,
+            0x34,
+            0x12,  # CPX $1234
+        ])
+
+        self.cpu.step(self.bus)
+
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.cpu.x, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.x, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_cpy_immediate_updates_flags_and_preserves_register(self):
+        self._load_program([
+            0xA0,
+            0x50,  # LDY #$50
+            0xC0,
+            0x40,  # CPY #$40 (Y > M)
+            0xC0,
+            0x50,  # CPY #$50 (Y == M)
+            0xC0,
+            0x60,  # CPY #$60 (Y < M)
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.y, 0x50)
+
+        cycles = self.cpu.step(self.bus)
+        self.assertEqual(cycles, 2)
+        self.assertEqual(self.cpu.y, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.y, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.y, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_cpy_zero_page_and_absolute_modes(self):
+        self.bus.write(0x0010, 0x20)
+        self.bus.write(0x1234, 0x60)
+
+        self._load_program([
+            0xA0,
+            0x50,  # LDY #$50
+            0xC4,
+            0x10,  # CPY $10
+            0xCC,
+            0x34,
+            0x12,  # CPY $1234
+        ])
+
+        self.cpu.step(self.bus)
+
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.cpu.y, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.y, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
 
 if __name__ == "__main__":
     unittest.main()
