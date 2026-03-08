@@ -56,19 +56,23 @@ def _run_game_session(runtime) -> str:
     if hasattr(runtime.video_output, "_pygame"):
         clock = runtime.video_output._pygame.time.Clock()
 
-    while True:
-        runtime.run_frame()
+    try:
+        while True:
+            runtime.run_frame()
 
-        if hasattr(runtime.video_output, "browser_exit_requested") and runtime.video_output.browser_exit_requested():
-            runtime.shutdown()
-            return "browser"
+            if hasattr(runtime.video_output, "browser_exit_requested") and runtime.video_output.browser_exit_requested():
+                runtime.shutdown()
+                return "browser"
 
-        if hasattr(runtime.video_output, "exit_requested") and runtime.video_output.exit_requested():
-            runtime.shutdown()
-            return "quit"
+            if hasattr(runtime.video_output, "exit_requested") and runtime.video_output.exit_requested():
+                runtime.shutdown()
+                return "quit"
 
-        if clock is not None:
-            clock.tick(60)
+            if clock is not None:
+                clock.tick(60)
+    except KeyboardInterrupt:
+        runtime.shutdown()
+        raise
 
 
 def _launch_selected_rom(library: ROMLibraryManager, launcher: ROMLauncher) -> str:
@@ -164,4 +168,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        import pygame
+
+        print("[shutdown] Emulator interrupted by user.")
+        pygame.quit()
+        print("[shutdown] Emulator exited.")
