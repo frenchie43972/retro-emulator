@@ -9,27 +9,12 @@ from pathlib import Path
 
 from core.cartridge import CartridgeLoader
 from core.cartridge.base import LoadedCartridge
-from emulator.interfaces import AudioProcessor, Cartridge, Controller, FrameBuffer, MemoryBus, VideoProcessor
+from emulator.interfaces import AudioProcessor, Cartridge, Controller, MemoryBus
 from emulator.platform import Platform
 
 from .cpu_6502 import MOS6502CPU
 from .nes_memory_map import NESMemoryBus, NESMemoryMap
-
-
-class NESVideo(VideoProcessor):
-    def reset(self) -> None:
-        self._ready = False
-        self._frame = FrameBuffer(width=256, height=240, pixels=b"\x00" * (256 * 240 * 4))
-
-    def step(self, cycles: int) -> None:
-        self._ready = self._ready or cycles > 0
-
-    def frame_ready(self) -> bool:
-        return self._ready
-
-    def consume_frame(self) -> FrameBuffer:
-        self._ready = False
-        return self._frame
+from .ppu import NESPPU
 
 
 class NESAudio(AudioProcessor):
@@ -88,12 +73,13 @@ class NESPlatform(Platform):
 
     def __init__(self, *, debug: bool = False) -> None:
         self.memory_bus = NESMemoryBus(debug=debug)
-        self.memory_map = NESMemoryMap(self.memory_bus)
+        self.ppu = NESPPU()
+        self.memory_map = NESMemoryMap(self.memory_bus, self.ppu)
         self.memory_map.attach()
         super().__init__(
             name="nes",
             cpu=MOS6502CPU(self.memory_bus, debug=debug),
-            video=NESVideo(),
+            video=self.ppu,
             audio=NESAudio(),
             cartridge=NESCartridge(),
             controller=NESController(),
@@ -102,6 +88,7 @@ class NESPlatform(Platform):
 
     def reset(self) -> None:
         self.memory_map.reset()
+        self.ppu.set_cartridge(self.cartridge.loaded)
         super().reset()
 
 
