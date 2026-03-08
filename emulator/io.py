@@ -37,6 +37,14 @@ class KeyboardInputProvider(InputProvider):
 
     _state: dict[str, bool] = field(default_factory=dict)
 
+    def key_down(self, key: str) -> None:
+        """Record that a host key is currently pressed."""
+        self.set_key_state(key, True)
+
+    def key_up(self, key: str) -> None:
+        """Record that a host key is currently released."""
+        self.set_key_state(key, False)
+
     def set_key_state(self, key: str, pressed: bool) -> None:
         self._state[key] = pressed
 

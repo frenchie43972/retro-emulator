@@ -91,10 +91,12 @@ class PygameWindowRenderer(VideoOutput):
             if self.input_provider is None:
                 continue
 
-            if event.type == self._pygame.KEYDOWN and event.key in self._key_map:
-                self.input_provider.set_key_state(self._key_map[event.key], True)
-            elif event.type == self._pygame.KEYUP and event.key in self._key_map:
-                self.input_provider.set_key_state(self._key_map[event.key], False)
+            if event.type == self._pygame.KEYDOWN:
+                if event.key in self._key_map:
+                    self.input_provider.key_down(self._key_map[event.key])
+            elif event.type == self._pygame.KEYUP:
+                if event.key in self._key_map:
+                    self.input_provider.key_up(self._key_map[event.key])
 
 
     def browser_exit_requested(self) -> bool:
