@@ -106,6 +106,26 @@ class PygameVideoWindowTests(unittest.TestCase):
 
         self.assertTrue(video.browser_exit_requested())
 
+
+    def test_keyboard_events_update_input_provider_state(self):
+        fake_pygame = _FakePygame()
+        input_provider = SimpleNamespace(
+            key_down=lambda key: input_provider.state.__setitem__(key, True),
+            key_up=lambda key: input_provider.state.__setitem__(key, False),
+            state={},
+        )
+        with patch.dict(sys.modules, {"pygame": fake_pygame}):
+            video = PygameWindowRenderer(width=256, height=240, scale=3, title="NES", input_provider=input_provider)
+            fake_pygame._events = [
+                SimpleNamespace(type=fake_pygame.KEYDOWN, key=fake_pygame.K_RSHIFT),
+                SimpleNamespace(type=fake_pygame.KEYDOWN, key=fake_pygame.K_UP),
+                SimpleNamespace(type=fake_pygame.KEYUP, key=fake_pygame.K_UP),
+            ]
+            video._process_events()
+
+        self.assertTrue(input_provider.state["right shift"])
+        self.assertFalse(input_provider.state["up"])
+
     def test_missing_pygame_dependency_message(self):
         with patch.dict(sys.modules, {"pygame": None}):
             with self.assertRaises(PygameUnavailableError) as ctx:
