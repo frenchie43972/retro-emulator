@@ -185,6 +185,14 @@ class MOS6502CPU(CPU):
             0xD9: lambda: self._cmp(self._absolute_y(), 4, add_page_cycle=True),
             0xC1: lambda: self._cmp(self._indexed_indirect(), 6),
             0xD1: lambda: self._cmp(self._indirect_indexed(), 5, add_page_cycle=True),
+            # CPX
+            0xE0: lambda: self._cpx(self._immediate(), 2),
+            0xE4: lambda: self._cpx(self._zero_page(), 3),
+            0xEC: lambda: self._cpx(self._absolute(), 4),
+            # CPY
+            0xC0: lambda: self._cpy(self._immediate(), 2),
+            0xC4: lambda: self._cpy(self._zero_page(), 3),
+            0xCC: lambda: self._cpy(self._absolute(), 4),
             # Transfers
             0xAA: lambda: self._tax(),
             0xA8: lambda: self._tay(),
@@ -356,11 +364,24 @@ class MOS6502CPU(CPU):
 
     def _cmp(self, addr: _AddressingResult, cycles: int, add_page_cycle: bool = False) -> int:
         value = self.bus.read(addr.address)
-        result = (self.a - value) & 0xFF
-        self._set_flag(FLAG_CARRY, self.a >= value)
-        self._set_flag(FLAG_ZERO, self.a == value)
-        self._set_flag(FLAG_NEGATIVE, (result & 0x80) != 0)
+        self._compare_register(self.a, value)
         return cycles + (1 if add_page_cycle and addr.page_crossed else 0)
+
+    def _cpx(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self.bus.read(addr.address)
+        self._compare_register(self.x, value)
+        return cycles
+
+    def _cpy(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self.bus.read(addr.address)
+        self._compare_register(self.y, value)
+        return cycles
+
+    def _compare_register(self, register: int, value: int) -> None:
+        result = (register - value) & 0xFF
+        self._set_flag(FLAG_CARRY, register >= value)
+        self._set_flag(FLAG_ZERO, register == value)
+        self._set_flag(FLAG_NEGATIVE, (result & 0x80) != 0)
 
     def _tax(self) -> int:
         self.x = self.a
