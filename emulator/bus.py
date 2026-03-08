@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from .interfaces import MemoryBus, MemoryDevice
 
@@ -26,6 +27,11 @@ class MappedMemoryBus(MemoryBus):
 
     def __init__(self) -> None:
         self._mappings: list[tuple[AddressRange, MemoryDevice]] = []
+        self._read_patcher: ReadPatcher | None = None
+
+    def set_read_patcher(self, patcher: "ReadPatcher | None") -> None:
+        """Install an optional read patcher (e.g. cheat device)."""
+        self._read_patcher = patcher
 
     def register(self, start: int, end: int, device: MemoryDevice) -> None:
         """Map a device into an inclusive [start, end] address range."""
@@ -44,7 +50,10 @@ class MappedMemoryBus(MemoryBus):
 
     def read(self, address: int) -> int:
         mapped = self._resolve(address)
-        return mapped[1].read(mapped[0].to_local(address))
+        value = mapped[1].read(mapped[0].to_local(address))
+        if self._read_patcher is not None:
+            return self._read_patcher.patch_read(address, value)
+        return value
 
     def write(self, address: int, value: int) -> None:
         if not 0 <= value <= 0xFF:
@@ -83,3 +92,10 @@ class ROM(MemoryDevice):
 
     def write(self, address: int, value: int) -> None:
         raise PermissionError("Cannot write to ROM")
+
+
+class ReadPatcher(Protocol):
+    """Interface for systems that alter bus read results."""
+
+    def patch_read(self, address: int, actual_value: int) -> int:
+        """Return patched read value for one bus address."""

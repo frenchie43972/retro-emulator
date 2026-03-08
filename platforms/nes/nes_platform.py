@@ -10,6 +10,7 @@ from pathlib import Path
 
 from core.cartridge import CartridgeLoader
 from core.cartridge.base import LoadedCartridge
+from core.cheats import CheatManager
 from emulator.interfaces import Cartridge, MemoryBus
 from emulator.platform import Platform
 
@@ -88,6 +89,8 @@ class NESPlatform(Platform):
 
     def __init__(self, *, debug: bool = False, saves_root: Path | None = None) -> None:
         self.memory_bus = NESMemoryBus(debug=debug)
+        self.cheats = CheatManager()
+        self.memory_bus.set_read_patcher(self.cheats)
         self.ppu = NESPPU()
         self.apu = NESAPU()
         self.controller = NESController()
