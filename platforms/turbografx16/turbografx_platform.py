@@ -7,11 +7,12 @@ from dataclasses import dataclass, field
 from emulator.bus import MappedMemoryBus
 from emulator.interfaces import Cartridge, MemoryBus
 from emulator.platform import Platform
-from platforms.null_platform.plugin import NullAudio, NullController, NullVideo
+from platforms.null_platform.plugin import NullAudio, NullController
 
 from .cpu_huc6280 import HuC6280CPU
 from .hucard_loader import HuCardLoader, LoadedHuCard
 from .tg16_memory_map import TG16MemoryMap
+from .video import HuC6270VDC
 
 
 @dataclass
@@ -41,12 +42,13 @@ class TurboGrafx16Platform(Platform):
 
     def __init__(self) -> None:
         bus = MappedMemoryBus()
-        self.memory_map = TG16MemoryMap.create(bus)
+        self.vdc = HuC6270VDC()
+        self.memory_map = TG16MemoryMap.create(bus, self.vdc)
         self.tg16_cartridge = TurboGrafxCartridge()
         super().__init__(
             name="turbografx16",
             cpu=HuC6280CPU(bus),
-            video=NullVideo(),
+            video=self.vdc,
             audio=NullAudio(),
             cartridge=self.tg16_cartridge,
             controller=NullController(),
