@@ -48,3 +48,9 @@ class Mapper2UxROM(NESMapper):
         if cartridge.chr_rom:
             return
         cartridge.chr_ram[address % len(cartridge.chr_ram)] = value & 0xFF
+
+    def serialize_state(self) -> dict:
+        return {"selected_bank": self._selected_bank}
+
+    def deserialize_state(self, state: dict) -> None:
+        self._selected_bank = int(state["selected_bank"])

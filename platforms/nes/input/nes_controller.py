@@ -48,3 +48,11 @@ class NESController(Controller):
         """Capture current button state in serial register order."""
 
         return tuple(1 if self._buttons[name] else 0 for name in BUTTON_ORDER)
+
+
+    def serialize_state(self) -> dict:
+        return {"buttons": dict(self._buttons)}
+
+    def deserialize_state(self, state: dict) -> None:
+        for button in BUTTON_ORDER:
+            self._buttons[button] = bool(state["buttons"].get(button, False))

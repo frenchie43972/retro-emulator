@@ -121,3 +121,29 @@ class NESAPU(AudioProcessor, MemoryDevice):
         self.triangle.set_enabled(bool(value & 0x04))
         self.noise.set_enabled(bool(value & 0x08))
         self.dmc.set_enabled(bool(value & 0x10))
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "sample_rate": self.sample_rate,
+            "pulse1": self.pulse1.serialize_state(),
+            "pulse2": self.pulse2.serialize_state(),
+            "triangle": self.triangle.serialize_state(),
+            "noise": self.noise.serialize_state(),
+            "dmc": self.dmc.serialize_state(),
+            "frame_counter_mode": self.frame_counter_mode,
+            "irq_inhibit": self.irq_inhibit,
+            "sample_accumulator": self._sample_accumulator,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.sample_rate = int(state["sample_rate"])
+        self.frame_counter_mode = int(state["frame_counter_mode"])
+        self.irq_inhibit = bool(state["irq_inhibit"])
+        self._sample_accumulator = float(state["sample_accumulator"])
+        self._samples = []
+        self.pulse1.deserialize_state(state["pulse1"])
+        self.pulse2.deserialize_state(state["pulse2"])
+        self.triangle.deserialize_state(state["triangle"])
+        self.noise.deserialize_state(state["noise"])
+        self.dmc.deserialize_state(state["dmc"])

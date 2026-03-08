@@ -38,3 +38,14 @@ class ControllerRegisters(MemoryDevice):
         value = self._latched_state_p1[self._read_index_p1]
         self._read_index_p1 += 1
         return value
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "latched_state_p1": list(self._latched_state_p1),
+            "read_index_p1": self._read_index_p1,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self._latched_state_p1 = tuple(int(v) for v in state["latched_state_p1"])
+        self._read_index_p1 = int(state["read_index_p1"])

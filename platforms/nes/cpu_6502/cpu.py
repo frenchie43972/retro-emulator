@@ -72,6 +72,26 @@ class MOS6502CPU(CPU):
         self.cycles += consumed
         return consumed
 
+    def serialize_state(self) -> dict:
+        return {
+            "cycles": self.cycles,
+            "a": self.a,
+            "x": self.x,
+            "y": self.y,
+            "stack_pointer": self.stack_pointer,
+            "program_counter": self.program_counter,
+            "status": self.status,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.cycles = int(state["cycles"])
+        self.a = int(state["a"])
+        self.x = int(state["x"])
+        self.y = int(state["y"])
+        self.stack_pointer = int(state["stack_pointer"])
+        self.program_counter = int(state["program_counter"])
+        self.status = int(state["status"])
+
     def _instruction_set(self) -> dict[int, callable]:
         return {
             0xEA: lambda: 2,

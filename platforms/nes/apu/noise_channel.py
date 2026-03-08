@@ -102,3 +102,24 @@ class NoiseChannel:
         if self.shift_register & 0x01:
             return 0.0
         return self.volume / 15.0
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "enabled": self.enabled,
+            "volume": self.volume,
+            "mode": self.mode,
+            "period_index": self.period_index,
+            "length_counter": self.length_counter,
+            "shift_register": self.shift_register,
+            "phase": self.phase,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.enabled = bool(state["enabled"])
+        self.volume = int(state["volume"])
+        self.mode = int(state["mode"])
+        self.period_index = int(state["period_index"])
+        self.length_counter = int(state["length_counter"])
+        self.shift_register = int(state["shift_register"])
+        self.phase = float(state["phase"])

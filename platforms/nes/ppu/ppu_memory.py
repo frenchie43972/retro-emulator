@@ -67,3 +67,18 @@ class PPUMemory:
         if local in {0x10, 0x14, 0x18, 0x1C}:
             local -= 0x10
         return local
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "chr_ram": bytes(self._chr_ram),
+            "nametables": bytes(self._nametables),
+            "palette_ram": bytes(self._palette_ram),
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        for key, target in (("chr_ram", self._chr_ram), ("nametables", self._nametables), ("palette_ram", self._palette_ram)):
+            incoming = state[key]
+            if len(incoming) != len(target):
+                raise ValueError(f"PPU {key} size mismatch in save state")
+            target[:] = incoming

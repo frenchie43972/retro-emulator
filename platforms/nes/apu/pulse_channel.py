@@ -85,3 +85,22 @@ class PulseChannel:
         if _DUTY_PATTERNS[self.duty][waveform_index] == 0:
             return 0.0
         return self.volume / 15.0
+
+
+    def serialize_state(self) -> dict:
+        return {
+            "enabled": self.enabled,
+            "duty": self.duty,
+            "volume": self.volume,
+            "timer_period": self.timer_period,
+            "length_counter": self.length_counter,
+            "phase": self.phase,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self.enabled = bool(state["enabled"])
+        self.duty = int(state["duty"])
+        self.volume = int(state["volume"])
+        self.timer_period = int(state["timer_period"])
+        self.length_counter = int(state["length_counter"])
+        self.phase = float(state["phase"])

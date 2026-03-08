@@ -30,3 +30,11 @@ class DMCChannel:
         if not self.enabled:
             return 0.0
         return self.output_level / 127.0
+
+
+    def serialize_state(self) -> dict:
+        return {"enabled": self.enabled, "output_level": self.output_level}
+
+    def deserialize_state(self, state: dict) -> None:
+        self.enabled = bool(state["enabled"])
+        self.output_level = int(state["output_level"])

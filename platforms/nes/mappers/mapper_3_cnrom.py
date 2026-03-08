@@ -47,3 +47,9 @@ class Mapper3CNROM(NESMapper):
         if cartridge.chr_rom:
             return
         cartridge.chr_ram[address % len(cartridge.chr_ram)] = value & 0xFF
+
+    def serialize_state(self) -> dict:
+        return {"chr_bank": self._chr_bank}
+
+    def deserialize_state(self, state: dict) -> None:
+        self._chr_bank = int(state["chr_bank"])

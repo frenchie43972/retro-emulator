@@ -109,3 +109,19 @@ class Mapper1MMC1(NESMapper):
             return cartridge.chr_rom[bank * 0x1000 + address]
         bank = self._chr_bank1 % bank4k_count
         return cartridge.chr_rom[bank * 0x1000 + (address - 0x1000)]
+
+    def serialize_state(self) -> dict:
+        return {
+            "shift_register": self._shift_register,
+            "control": self._control,
+            "chr_bank0": self._chr_bank0,
+            "chr_bank1": self._chr_bank1,
+            "prg_bank": self._prg_bank,
+        }
+
+    def deserialize_state(self, state: dict) -> None:
+        self._shift_register = int(state["shift_register"])
+        self._control = int(state["control"])
+        self._chr_bank0 = int(state["chr_bank0"])
+        self._chr_bank1 = int(state["chr_bank1"])
+        self._prg_bank = int(state["prg_bank"])

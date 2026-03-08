@@ -19,3 +19,13 @@ class NESRAM(MemoryDevice):
 
     def write(self, address: int, value: int) -> None:
         self._data[address % 0x0800] = value & 0xFF
+
+
+    def serialize_state(self) -> dict:
+        return {"data": bytes(self._data)}
+
+    def deserialize_state(self, state: dict) -> None:
+        data = state["data"]
+        if len(data) != len(self._data):
+            raise ValueError("NES RAM size mismatch in save state")
+        self._data[:] = data
