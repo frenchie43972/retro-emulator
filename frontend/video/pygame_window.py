@@ -33,6 +33,7 @@ class PygameWindowRenderer(VideoOutput):
         self._pygame = pygame
         self._window = None
         self._running = True
+        self._return_to_browser = False
         self._key_map = {
             pygame.K_UP: "up",
             pygame.K_DOWN: "down",
@@ -83,6 +84,10 @@ class PygameWindowRenderer(VideoOutput):
                 self._running = False
                 continue
 
+            if event.type == self._pygame.KEYDOWN and event.key == self._pygame.K_ESCAPE:
+                self._return_to_browser = True
+                continue
+
             if self.input_provider is None:
                 continue
 
@@ -90,6 +95,10 @@ class PygameWindowRenderer(VideoOutput):
                 self.input_provider.set_key_state(self._key_map[event.key], True)
             elif event.type == self._pygame.KEYUP and event.key in self._key_map:
                 self.input_provider.set_key_state(self._key_map[event.key], False)
+
+
+    def browser_exit_requested(self) -> bool:
+        return self._return_to_browser
 
     def exit_requested(self) -> bool:
         return not self._running
