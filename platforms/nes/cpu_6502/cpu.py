@@ -176,6 +176,15 @@ class MOS6502CPU(CPU):
             # BIT
             0x24: lambda: self._bit(self._zero_page(), 3),
             0x2C: lambda: self._bit(self._absolute(), 4),
+            # CMP
+            0xC9: lambda: self._cmp(self._immediate(), 2),
+            0xC5: lambda: self._cmp(self._zero_page(), 3),
+            0xD5: lambda: self._cmp(self._zero_page_x(), 4),
+            0xCD: lambda: self._cmp(self._absolute(), 4),
+            0xDD: lambda: self._cmp(self._absolute_x(), 4, add_page_cycle=True),
+            0xD9: lambda: self._cmp(self._absolute_y(), 4, add_page_cycle=True),
+            0xC1: lambda: self._cmp(self._indexed_indirect(), 6),
+            0xD1: lambda: self._cmp(self._indirect_indexed(), 5, add_page_cycle=True),
             # Transfers
             0xAA: lambda: self._tax(),
             0xA8: lambda: self._tay(),
@@ -344,6 +353,14 @@ class MOS6502CPU(CPU):
         self._set_flag(FLAG_NEGATIVE, (value & 0x80) != 0)
         self._set_flag(FLAG_OVERFLOW, (value & 0x40) != 0)
         return cycles
+
+    def _cmp(self, addr: _AddressingResult, cycles: int, add_page_cycle: bool = False) -> int:
+        value = self.bus.read(addr.address)
+        result = (self.a - value) & 0xFF
+        self._set_flag(FLAG_CARRY, self.a >= value)
+        self._set_flag(FLAG_ZERO, self.a == value)
+        self._set_flag(FLAG_NEGATIVE, (result & 0x80) != 0)
+        return cycles + (1 if add_page_cycle and addr.page_crossed else 0)
 
     def _tax(self) -> int:
         self.x = self.a
