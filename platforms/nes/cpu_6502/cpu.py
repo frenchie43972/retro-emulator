@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 
 from emulator.interfaces import CPU, MemoryBus
 
@@ -25,8 +26,10 @@ class _AddressingResult:
 class MOS6502CPU(CPU):
     """Core MOS 6502 CPU implementation used by the NES platform."""
 
-    def __init__(self, bus: MemoryBus) -> None:
+    def __init__(self, bus: MemoryBus, *, debug: bool = False) -> None:
         self.bus = bus
+        self.debug = debug
+        self._logger = logging.getLogger("platforms.nes.cpu")
         self.cycles = 0
         self.a = 0
         self.x = 0
@@ -46,7 +49,20 @@ class MOS6502CPU(CPU):
 
     def step(self, bus: MemoryBus) -> int:
         self.bus = bus
+        opcode_address = self.program_counter
         opcode = self._fetch_byte()
+
+        if self.debug:
+            self._logger.debug(
+                "pc=$%04X opcode=$%02X A=$%02X X=$%02X Y=$%02X SP=$%02X P=$%02X",
+                opcode_address,
+                opcode,
+                self.a,
+                self.x,
+                self.y,
+                self.stack_pointer,
+                self.status,
+            )
 
         handler = self._instruction_set().get(opcode)
         if handler is None:
