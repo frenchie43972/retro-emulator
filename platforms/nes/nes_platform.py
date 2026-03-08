@@ -9,10 +9,11 @@ from pathlib import Path
 
 from core.cartridge import CartridgeLoader
 from core.cartridge.base import LoadedCartridge
-from emulator.interfaces import AudioProcessor, Cartridge, Controller, MemoryBus
+from emulator.interfaces import AudioProcessor, Cartridge, MemoryBus
 from emulator.platform import Platform
 
 from .cpu_6502 import MOS6502CPU
+from .input.nes_controller import NESController
 from .nes_memory_map import NESMemoryBus, NESMemoryMap
 from .ppu import NESPPU
 
@@ -60,21 +61,14 @@ class NESCartridge(Cartridge):
         self.loaded.attach_to_bus(bus)
 
 
-@dataclass
-class NESController(Controller):
-    state: dict[str, bool] = field(default_factory=dict)
-
-    def set_button_state(self, button: str, pressed: bool) -> None:
-        self.state[button] = pressed
-
-
 class NESPlatform(Platform):
     """Platform with NES-specific memory map reset behavior."""
 
     def __init__(self, *, debug: bool = False) -> None:
         self.memory_bus = NESMemoryBus(debug=debug)
         self.ppu = NESPPU()
-        self.memory_map = NESMemoryMap(self.memory_bus, self.ppu)
+        self.controller = NESController()
+        self.memory_map = NESMemoryMap(self.memory_bus, self.ppu, self.controller)
         self.memory_map.attach()
         super().__init__(
             name="nes",
@@ -82,7 +76,7 @@ class NESPlatform(Platform):
             video=self.ppu,
             audio=NESAudio(),
             cartridge=NESCartridge(),
-            controller=NESController(),
+            controller=self.controller,
             bus=self.memory_bus,
         )
 
