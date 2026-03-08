@@ -84,6 +84,8 @@ class EmulatorRuntime:
 
     def shutdown(self) -> None:
         self._persist_ram_if_supported()
+        if hasattr(self.video_output, "shutdown"):
+            self.video_output.shutdown()
 
     def _process_input(self) -> None:
         key_states = self.input_provider.poll()

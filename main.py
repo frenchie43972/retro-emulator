@@ -63,6 +63,9 @@ def _run_game_session(runtime) -> str:
             return "browser"
 
         runtime.run_frame()
+        if hasattr(runtime.video_output, "exit_requested") and runtime.video_output.exit_requested():
+            runtime.shutdown()
+            return "quit"
         print("[runtime] Frame executed.")
 
 
