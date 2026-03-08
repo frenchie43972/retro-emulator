@@ -197,6 +197,92 @@ class MOS6502CPUTests(unittest.TestCase):
         self.cpu.step(self.bus)
         self.assertEqual(self.cpu.a, 0x03)
 
+    def test_cmp_immediate_updates_flags_and_preserves_accumulator(self):
+        self._load_program([
+            0xA9,
+            0x50,  # LDA #$50
+            0xC9,
+            0x40,  # CMP #$40 (A > M)
+            0xC9,
+            0x50,  # CMP #$50 (A == M)
+            0xC9,
+            0x60,  # CMP #$60 (A < M)
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.a, 0x50)
+
+        cycles = self.cpu.step(self.bus)
+        self.assertEqual(cycles, 2)
+        self.assertEqual(self.cpu.a, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.a, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.a, 0x50)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_cmp_addressing_modes_and_cycles(self):
+        self.bus.write(0x0010, 0x20)
+        self.bus.write(0x0012, 0x50)
+        self.bus.write(0x1234, 0x10)
+        self.bus.write(0x1300, 0x50)
+        self.bus.write(0x1400, 0x10)
+
+        self.bus.write(0x0020, 0x00)
+        self.bus.write(0x0021, 0x14)
+
+        self.bus.write(0x0030, 0xFF)
+        self.bus.write(0x0031, 0x12)
+
+        self._load_program([
+            0xA9,
+            0x50,  # LDA #$50
+            0xA2,
+            0x02,  # LDX #$02
+            0xA0,
+            0x01,  # LDY #$01
+            0xC5,
+            0x10,  # CMP $10
+            0xD5,
+            0x10,  # CMP $10,X => $12
+            0xCD,
+            0x34,
+            0x12,  # CMP $1234
+            0xDD,
+            0xFF,
+            0x12,  # CMP $12FF,X => $1301 page-crossing
+            0xD9,
+            0xFF,
+            0x13,  # CMP $13FF,Y => $1400 page-crossing
+            0xC1,
+            0x1E,  # CMP ($1E,X) => ($20)
+            0xD1,
+            0x30,  # CMP ($30),Y => $1300 page-crossing
+        ])
+
+        self.cpu.step(self.bus)
+        self.cpu.step(self.bus)
+        self.cpu.step(self.bus)
+
+        self.assertEqual(self.cpu.step(self.bus), 3)
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.step(self.bus), 4)
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.cpu.a, 0x50)
+
 
 if __name__ == "__main__":
     unittest.main()
