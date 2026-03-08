@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from emulator.bus import MappedMemoryBus, RAM, ROM
-from emulator.interfaces import AudioProcessor, CPU, Cartridge, Controller, FrameBuffer, VideoProcessor
+from emulator.interfaces import AudioProcessor, CPU, Cartridge, Controller, FrameBuffer, MemoryBus, VideoProcessor
 from emulator.platform import Platform
 
 
@@ -81,6 +81,17 @@ class NullCartridge(Cartridge):
 
     def load(self, rom_bytes: bytes) -> None:
         self.rom = rom_bytes
+
+    def read(self, address: int) -> int:
+        if not self.rom:
+            return 0x00
+        return self.rom[address % len(self.rom)]
+
+    def write(self, address: int, value: int) -> None:
+        _ = address, value
+
+    def attach_to_bus(self, bus: MemoryBus) -> None:
+        _ = bus
 
 
 @dataclass

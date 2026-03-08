@@ -1,0 +1,1 @@
+"""NES platform plugin package."""

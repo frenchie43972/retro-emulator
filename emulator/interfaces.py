@@ -98,6 +98,18 @@ class Cartridge(ABC):
     def load(self, rom_bytes: bytes) -> None:
         """Load ROM or cartridge image data."""
 
+    @abstractmethod
+    def read(self, address: int) -> int:
+        """Read one byte from cartridge-mapped memory."""
+
+    @abstractmethod
+    def write(self, address: int, value: int) -> None:
+        """Write one byte to cartridge-mapped memory."""
+
+    @abstractmethod
+    def attach_to_bus(self, bus: "MemoryBus") -> None:
+        """Register cartridge memory regions on a bus."""
+
 
 class Controller(ABC):
     """Platform controller interface."""
