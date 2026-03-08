@@ -218,6 +218,27 @@ class MOS6502CPU(CPU):
             0xDE: lambda: self._dec(self._absolute_x(), 7),
             0xCA: lambda: self._dex(),
             0x88: lambda: self._dey(),
+            # Shift/rotate
+            0x0A: lambda: self._asl_accumulator(),
+            0x06: lambda: self._asl(self._zero_page(), 5),
+            0x16: lambda: self._asl(self._zero_page_x(), 6),
+            0x0E: lambda: self._asl(self._absolute(), 6),
+            0x1E: lambda: self._asl(self._absolute_x(), 7),
+            0x4A: lambda: self._lsr_accumulator(),
+            0x46: lambda: self._lsr(self._zero_page(), 5),
+            0x56: lambda: self._lsr(self._zero_page_x(), 6),
+            0x4E: lambda: self._lsr(self._absolute(), 6),
+            0x5E: lambda: self._lsr(self._absolute_x(), 7),
+            0x2A: lambda: self._rol_accumulator(),
+            0x26: lambda: self._rol(self._zero_page(), 5),
+            0x36: lambda: self._rol(self._zero_page_x(), 6),
+            0x2E: lambda: self._rol(self._absolute(), 6),
+            0x3E: lambda: self._rol(self._absolute_x(), 7),
+            0x6A: lambda: self._ror_accumulator(),
+            0x66: lambda: self._ror(self._zero_page(), 5),
+            0x76: lambda: self._ror(self._zero_page_x(), 6),
+            0x6E: lambda: self._ror(self._absolute(), 6),
+            0x7E: lambda: self._ror(self._absolute_x(), 7),
             # Flow
             0x4C: lambda: self._jmp_absolute(),
             0x6C: lambda: self._jmp_indirect(),
@@ -466,6 +487,68 @@ class MOS6502CPU(CPU):
         self.y = (self.y - 1) & 0xFF
         self._set_zn(self.y)
         return 2
+
+    def _asl_accumulator(self) -> int:
+        self.a = self._asl_value(self.a)
+        return 2
+
+    def _asl(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self._asl_value(self.bus.read(addr.address))
+        self.bus.write(addr.address, value)
+        return cycles
+
+    def _asl_value(self, value: int) -> int:
+        self._set_flag(FLAG_CARRY, (value & 0x80) != 0)
+        result = (value << 1) & 0xFF
+        self._set_zn(result)
+        return result
+
+    def _lsr_accumulator(self) -> int:
+        self.a = self._lsr_value(self.a)
+        return 2
+
+    def _lsr(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self._lsr_value(self.bus.read(addr.address))
+        self.bus.write(addr.address, value)
+        return cycles
+
+    def _lsr_value(self, value: int) -> int:
+        self._set_flag(FLAG_CARRY, (value & 0x01) != 0)
+        result = (value >> 1) & 0xFF
+        self._set_zn(result)
+        return result
+
+    def _rol_accumulator(self) -> int:
+        self.a = self._rol_value(self.a)
+        return 2
+
+    def _rol(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self._rol_value(self.bus.read(addr.address))
+        self.bus.write(addr.address, value)
+        return cycles
+
+    def _rol_value(self, value: int) -> int:
+        carry_in = 1 if self._get_flag(FLAG_CARRY) else 0
+        self._set_flag(FLAG_CARRY, (value & 0x80) != 0)
+        result = ((value << 1) | carry_in) & 0xFF
+        self._set_zn(result)
+        return result
+
+    def _ror_accumulator(self) -> int:
+        self.a = self._ror_value(self.a)
+        return 2
+
+    def _ror(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self._ror_value(self.bus.read(addr.address))
+        self.bus.write(addr.address, value)
+        return cycles
+
+    def _ror_value(self, value: int) -> int:
+        carry_in = 1 if self._get_flag(FLAG_CARRY) else 0
+        self._set_flag(FLAG_CARRY, (value & 0x01) != 0)
+        result = ((value >> 1) | (carry_in << 7)) & 0xFF
+        self._set_zn(result)
+        return result
 
     def _jmp_absolute(self) -> int:
         self.program_counter = self._fetch_u16()

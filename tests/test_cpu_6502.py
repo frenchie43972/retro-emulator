@@ -464,6 +464,174 @@ class MOS6502CPUTests(unittest.TestCase):
         self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
         self.assertEqual(self.cpu.status & FLAG_BREAK, FLAG_BREAK)
 
+    def test_asl_accumulator_updates_result_and_flags(self):
+        self._load_program([
+            0xA9,
+            0x80,  # LDA #$80
+            0x0A,  # ASL A -> $00, carry set
+            0xA9,
+            0x40,  # LDA #$40
+            0x0A,  # ASL A -> $80, negative set
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x00)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x80)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+
+    def test_lsr_accumulator_clears_negative_and_sets_carry(self):
+        self._load_program([
+            0xA9,
+            0x01,  # LDA #$01
+            0x4A,  # LSR A -> $00, carry set
+            0xA9,
+            0x80,  # LDA #$80
+            0x4A,  # LSR A -> $40, negative clear
+        ])
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x00)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x40)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, 0)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+    def test_rol_and_ror_accumulator_use_carry_in_and_out(self):
+        self._load_program([
+            0xA9,
+            0x80,  # LDA #$80
+            0x38,  # SEC
+            0x2A,  # ROL A -> $01, carry set from bit 7
+            0x18,  # CLC
+            0x6A,  # ROR A -> $00, carry set from bit 0
+        ])
+
+        self.cpu.step(self.bus)
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x01)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, 0)
+
+        self.cpu.step(self.bus)
+        self.assertEqual(self.cpu.step(self.bus), 2)
+        self.assertEqual(self.cpu.a, 0x00)
+        self.assertEqual(self.cpu.status & FLAG_CARRY, FLAG_CARRY)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
+    def test_shift_rotate_memory_modes_write_back_and_use_expected_cycles(self):
+        self.bus.write(0x0010, 0x81)
+        self.bus.write(0x0012, 0x03)
+        self.bus.write(0x0022, 0x40)
+        self.bus.write(0x1234, 0x80)
+        self.bus.write(0x1236, 0x01)
+        self.bus.write(0x2000, 0x80)
+        self.bus.write(0x2002, 0x02)
+        self.bus.write(0x3000, 0x01)
+        self.bus.write(0x3002, 0x00)
+
+        self._load_program([
+            0xA2,
+            0x02,  # LDX #$02
+            0x06,
+            0x10,  # ASL $10
+            0x16,
+            0x10,  # ASL $10,X => $12
+            0x0E,
+            0x34,
+            0x12,  # ASL $1234
+            0x1E,
+            0x34,
+            0x12,  # ASL $1234,X => $1236
+            0x46,
+            0x10,  # LSR $10
+            0x56,
+            0x20,  # LSR $20,X => $22
+            0x4E,
+            0x00,
+            0x20,  # LSR $2000
+            0x5E,
+            0x00,
+            0x20,  # LSR $2000,X => $2002
+            0x26,
+            0x10,  # ROL $10
+            0x36,
+            0x20,  # ROL $20,X => $22
+            0x2E,
+            0x00,
+            0x30,  # ROL $3000
+            0x3E,
+            0x00,
+            0x30,  # ROL $3000,X => $3002
+            0x66,
+            0x10,  # ROR $10
+            0x76,
+            0x20,  # ROR $20,X => $22
+            0x6E,
+            0x00,
+            0x30,  # ROR $3000
+            0x7E,
+            0x00,
+            0x30,  # ROR $3000,X => $3002
+        ])
+
+        self.assertEqual(self.cpu.step(self.bus), 2)
+
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.bus.read(0x0010), 0x02)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x0012), 0x06)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x1234), 0x00)
+        self.assertEqual(self.cpu.step(self.bus), 7)
+        self.assertEqual(self.bus.read(0x1236), 0x02)
+
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.bus.read(0x0010), 0x01)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x0022), 0x20)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x2000), 0x40)
+        self.assertEqual(self.cpu.step(self.bus), 7)
+        self.assertEqual(self.bus.read(0x2002), 0x01)
+
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.bus.read(0x0010), 0x02)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x0022), 0x40)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x3000), 0x02)
+        self.assertEqual(self.cpu.step(self.bus), 7)
+        self.assertEqual(self.bus.read(0x3002), 0x00)
+
+        self.assertEqual(self.cpu.step(self.bus), 5)
+        self.assertEqual(self.bus.read(0x0010), 0x01)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x0022), 0x20)
+        self.assertEqual(self.cpu.step(self.bus), 6)
+        self.assertEqual(self.bus.read(0x3000), 0x01)
+        self.assertEqual(self.cpu.step(self.bus), 7)
+        self.assertEqual(self.bus.read(0x3002), 0x00)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
