@@ -111,6 +111,28 @@ class NESMemoryMapTests(unittest.TestCase):
         self.assertEqual(platform.bus.read(0x3FFF), 0x33)
 
 
+class NESControllerInputTests(unittest.TestCase):
+    def test_latched_reads_shift_controller_bits_from_4016(self):
+        platform = PluginLoader().load("nes")
+
+        platform.controller.set_button_state("z", True)
+        platform.controller.set_button_state("x", False)
+        platform.controller.set_button_state("right shift", True)
+        platform.controller.set_button_state("enter", False)
+        platform.controller.set_button_state("up", True)
+        platform.controller.set_button_state("down", False)
+        platform.controller.set_button_state("left", True)
+        platform.controller.set_button_state("right", False)
+
+        platform.bus.write(0x4016, 0x01)
+
+        reads = [platform.bus.read(0x4016) for _ in range(8)]
+
+        self.assertEqual(reads, [1, 0, 1, 0, 1, 0, 1, 0])
+        self.assertEqual(platform.bus.read(0x4016), 1)
+
+
+
 class NESBootTests(unittest.TestCase):
     def test_reset_vector_and_prg_execution(self):
         platform = PluginLoader().load("nes")

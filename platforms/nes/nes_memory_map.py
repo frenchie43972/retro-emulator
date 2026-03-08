@@ -7,6 +7,8 @@ import logging
 from emulator.bus import MappedMemoryBus
 from emulator.interfaces import MemoryDevice
 
+from .input.controller_registers import ControllerRegisters
+from .input.nes_controller import NESController
 from .nes_ram import NESRAM
 from .ppu import NESPPU
 
@@ -43,11 +45,11 @@ class _MirroredRegisterDevice(MemoryDevice):
         self._registers[address % self._register_count] = value & 0xFF
 
 
-class APUIORegisterPlaceholder(_MirroredRegisterDevice):
-    """Placeholder for NES APU/I-O registers ($4000-$4017)."""
+class APURegisterPlaceholder(_MirroredRegisterDevice):
+    """Placeholder for NES APU register range ($4000-$4015)."""
 
     def __init__(self) -> None:
-        super().__init__(register_count=0x18)
+        super().__init__(register_count=0x16)
 
 
 class DisabledRegisterPlaceholder(MemoryDevice):
@@ -74,18 +76,20 @@ class OpenBusPlaceholder(MemoryDevice):
 class NESMemoryMap:
     """Configures NES CPU-visible memory layout on the emulator bus."""
 
-    def __init__(self, bus: NESMemoryBus, ppu: NESPPU) -> None:
+    def __init__(self, bus: NESMemoryBus, ppu: NESPPU, controller1: NESController) -> None:
         self.bus = bus
         self.ram = NESRAM()
         self.ppu = ppu
-        self.apu_io = APUIORegisterPlaceholder()
+        self.apu = APURegisterPlaceholder()
+        self.controllers = ControllerRegisters(controller1=controller1)
         self.disabled = DisabledRegisterPlaceholder()
         self.open_bus = OpenBusPlaceholder()
 
     def attach(self) -> None:
         self.bus.register(0x0000, 0x1FFF, self.ram)
         self.bus.register(0x2000, 0x3FFF, self.ppu)
-        self.bus.register(0x4000, 0x4017, self.apu_io)
+        self.bus.register(0x4000, 0x4015, self.apu)
+        self.bus.register(0x4016, 0x4017, self.controllers)
         self.bus.register(0x4018, 0x401F, self.disabled)
         self.bus.register(0x4020, 0x5FFF, self.open_bus)
 
