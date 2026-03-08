@@ -62,15 +62,24 @@ class EmulatorRuntime:
         self._process_input()
 
         consumed = 0
-        while consumed < self.config.cycles_per_frame:
+        frame_rendered = False
+        while consumed < self.config.cycles_per_frame or not frame_rendered:
+            print("[runtime] stepping CPU")
             cycles = self.platform.cpu.step(self.platform.bus)
             consumed += cycles
-            ppu_cycles = cycles * getattr(self.platform.video, "ppu_cycles_per_cpu_cycle", 1)
-            self.platform.video.step(ppu_cycles)
+
+            ppu = self._resolve_ppu()
+            if ppu is not None:
+                print("[runtime] stepping PPU")
+                ppu_cycles = cycles * getattr(ppu, "ppu_cycles_per_cpu_cycle", 1)
+                ppu.step(ppu_cycles)
+
             self.platform.audio.step(cycles)
 
             if self.platform.video.frame_ready():
+                print("[runtime] frame complete")
                 frame = self.platform.video.consume_frame()
+                frame_rendered = True
                 if not self._video_sink_connected:
                     if hasattr(self.video_output, "render_frame"):
                         self.video_output.render_frame(frame)
@@ -124,3 +133,13 @@ class EmulatorRuntime:
     def _persist_ram_if_supported(self) -> None:
         if hasattr(self.platform.cartridge, "persist_ram"):
             self.platform.cartridge.persist_ram(self.config.saves_root)
+
+    def _resolve_ppu(self):
+        ppu = getattr(self.platform, "ppu", None)
+        if ppu is not None and hasattr(ppu, "step"):
+            return ppu
+
+        if hasattr(self.platform.video, "step"):
+            return self.platform.video
+
+        return None
