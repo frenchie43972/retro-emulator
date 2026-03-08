@@ -9,27 +9,14 @@ from pathlib import Path
 
 from core.cartridge import CartridgeLoader
 from core.cartridge.base import LoadedCartridge
-from emulator.interfaces import AudioProcessor, Cartridge, MemoryBus
+from emulator.interfaces import Cartridge, MemoryBus
 from emulator.platform import Platform
 
+from .apu import NESAPU
 from .cpu_6502 import MOS6502CPU
 from .input.nes_controller import NESController
 from .nes_memory_map import NESMemoryBus, NESMemoryMap
 from .ppu import NESPPU
-
-
-class NESAudio(AudioProcessor):
-    def reset(self) -> None:
-        self._samples: list[float] = []
-
-    def step(self, cycles: int) -> None:
-        if cycles:
-            self._samples.extend([0.0] * 8)
-
-    def pull_samples(self) -> list[float]:
-        out = self._samples
-        self._samples = []
-        return out
 
 
 @dataclass
@@ -67,14 +54,15 @@ class NESPlatform(Platform):
     def __init__(self, *, debug: bool = False) -> None:
         self.memory_bus = NESMemoryBus(debug=debug)
         self.ppu = NESPPU()
+        self.apu = NESAPU()
         self.controller = NESController()
-        self.memory_map = NESMemoryMap(self.memory_bus, self.ppu, self.controller)
+        self.memory_map = NESMemoryMap(self.memory_bus, self.ppu, self.controller, self.apu)
         self.memory_map.attach()
         super().__init__(
             name="nes",
             cpu=MOS6502CPU(self.memory_bus, debug=debug),
             video=self.ppu,
-            audio=NESAudio(),
+            audio=self.apu,
             cartridge=NESCartridge(),
             controller=self.controller,
             bus=self.memory_bus,

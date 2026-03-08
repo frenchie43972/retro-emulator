@@ -173,5 +173,89 @@ class NESPPURenderTests(unittest.TestCase):
         self.assertNotEqual(first, later)
 
 
+def make_apu_sound_test_rom(*, reset_vector: int = 0xC000) -> bytes:
+    header = bytearray(b"NES\x1A")
+    header.extend([1, 0, 0x00, 0x00])
+    header.extend(b"\x00" * 8)
+
+    # Program: enable pulse 1 and noise, configure tone/noise, then loop.
+    program = [
+        0xA9,
+        0x11,
+        0x8D,
+        0x15,
+        0x40,
+        0xA9,
+        0xBF,
+        0x8D,
+        0x00,
+        0x40,
+        0xA9,
+        0xFF,
+        0x8D,
+        0x02,
+        0x40,
+        0xA9,
+        0x07,
+        0x8D,
+        0x03,
+        0x40,
+        0xA9,
+        0x0F,
+        0x8D,
+        0x0C,
+        0x40,
+        0xA9,
+        0x04,
+        0x8D,
+        0x0E,
+        0x40,
+        0xA9,
+        0x08,
+        0x8D,
+        0x0F,
+        0x40,
+        0x4C,
+        0x23,
+        0xC0,
+    ]
+
+    prg = bytearray([0xEA] * 0x4000)
+    start = reset_vector - 0xC000
+    prg[start : start + len(program)] = bytes(program)
+    prg[0x3FFC] = reset_vector & 0xFF
+    prg[0x3FFD] = (reset_vector >> 8) & 0xFF
+
+    return bytes(header) + bytes(prg)
+
+
+class NESAPUTests(unittest.TestCase):
+    def test_apu_register_writes_generate_audio_samples(self):
+        platform = PluginLoader().load("nes")
+        audio_out = BufferedAudioOutput()
+        runtime = EmulatorRuntime(
+            platform,
+            FrameBufferVideoOutput(),
+            audio_out,
+            KeyboardInputProvider(),
+        )
+
+        runtime.initialize(make_apu_sound_test_rom())
+        runtime.run_frame()
+
+        self.assertGreater(len(audio_out.sample_buffer), 0)
+        self.assertTrue(any(abs(sample) > 0.01 for sample in audio_out.sample_buffer))
+
+    def test_cpu_writes_to_apu_status_update_channel_enable_flags(self):
+        platform = PluginLoader().load("nes")
+        platform.bus.write(0x4015, 0x1F)
+
+        self.assertTrue(platform.audio.pulse1.enabled)
+        self.assertTrue(platform.audio.pulse2.enabled)
+        self.assertTrue(platform.audio.triangle.enabled)
+        self.assertTrue(platform.audio.noise.enabled)
+        self.assertTrue(platform.audio.dmc.enabled)
+
+
 if __name__ == "__main__":
     unittest.main()
