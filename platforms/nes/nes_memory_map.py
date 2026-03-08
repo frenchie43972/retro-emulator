@@ -8,6 +8,7 @@ from emulator.bus import MappedMemoryBus
 from emulator.interfaces import MemoryDevice
 
 from .nes_ram import NESRAM
+from .ppu import NESPPU
 
 
 class NESMemoryBus(MappedMemoryBus):
@@ -42,13 +43,6 @@ class _MirroredRegisterDevice(MemoryDevice):
         self._registers[address % self._register_count] = value & 0xFF
 
 
-class PPURegisterPlaceholder(_MirroredRegisterDevice):
-    """Placeholder for NES PPU registers ($2000-$3FFF)."""
-
-    def __init__(self) -> None:
-        super().__init__(register_count=8)
-
-
 class APUIORegisterPlaceholder(_MirroredRegisterDevice):
     """Placeholder for NES APU/I-O registers ($4000-$4017)."""
 
@@ -80,10 +74,10 @@ class OpenBusPlaceholder(MemoryDevice):
 class NESMemoryMap:
     """Configures NES CPU-visible memory layout on the emulator bus."""
 
-    def __init__(self, bus: NESMemoryBus) -> None:
+    def __init__(self, bus: NESMemoryBus, ppu: NESPPU) -> None:
         self.bus = bus
         self.ram = NESRAM()
-        self.ppu = PPURegisterPlaceholder()
+        self.ppu = ppu
         self.apu_io = APUIORegisterPlaceholder()
         self.disabled = DisabledRegisterPlaceholder()
         self.open_bus = OpenBusPlaceholder()
