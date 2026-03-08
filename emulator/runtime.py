@@ -65,7 +65,8 @@ class EmulatorRuntime:
         while consumed < self.config.cycles_per_frame:
             cycles = self.platform.cpu.step(self.platform.bus)
             consumed += cycles
-            self.platform.video.step(cycles)
+            ppu_cycles = cycles * getattr(self.platform.video, "ppu_cycles_per_cpu_cycle", 1)
+            self.platform.video.step(ppu_cycles)
             self.platform.audio.step(cycles)
 
             if self.platform.video.frame_ready():

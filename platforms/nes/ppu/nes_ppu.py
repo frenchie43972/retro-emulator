@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from typing import Callable
 
 from core.cartridge.base import LoadedCartridge
@@ -40,10 +41,12 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self.registers = PPURegisters()
         self.background_renderer = BackgroundRenderer()
         self.sprite_system = SpriteSystem()
-        self._scanline = 0
-        self._cycle = 0
+        self.current_scanline = 0
+        self.current_cycle = 0
         self._frame_ready = False
-        self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=b"\x00" * (NES_WIDTH * NES_HEIGHT * 4))
+        self.ppu_cycles_per_cpu_cycle = 3
+        self._debug_frame_completion = os.getenv("NES_PPU_DEBUG", "0") in {"1", "true", "TRUE", "on", "ON"}
+        self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=b"\x00" * (NES_WIDTH * NES_HEIGHT * 3))
         self._frame_sink: Callable[[FrameBuffer], None] | None = None
 
     def set_cartridge(self, cartridge: LoadedCartridge | None) -> None:
@@ -56,26 +59,25 @@ class NESPPU(VideoProcessor, MemoryDevice):
     def reset(self) -> None:
         self.registers.reset()
         self.sprite_system.reset()
-        self._scanline = 0
-        self._cycle = 0
+        self.current_scanline = 0
+        self.current_cycle = 0
         self._frame_ready = False
         self.registers.set_vblank(False)
 
     def step(self, cycles: int) -> None:
-        ppu_cycles = cycles * 3
-        for _ in range(ppu_cycles):
-            self._cycle += 1
-            if self._cycle >= 341:
-                self._cycle = 0
-                self._scanline += 1
+        for _ in range(cycles):
+            if self.current_scanline == 241 and self.current_cycle == 1:
+                self.registers.set_vblank(True)
 
-                if self._scanline == 241:
-                    self.registers.set_vblank(True)
-                    self._render_frame()
-                    self._frame_ready = True
-                elif self._scanline >= 262:
-                    self._scanline = 0
-                    self.registers.set_vblank(False)
+            if self.current_scanline == 261 and self.current_cycle == 340:
+                self._complete_frame()
+
+            self.current_cycle += 1
+            if self.current_cycle >= 341:
+                self.current_cycle = 0
+                self.current_scanline += 1
+                if self.current_scanline >= 262:
+                    self.current_scanline = 0
 
     def frame_ready(self) -> bool:
         return self._frame_ready
@@ -144,8 +146,8 @@ class NESPPU(VideoProcessor, MemoryDevice):
             "memory": self.memory.serialize_state(),
             "registers": self.registers.serialize_state(),
             "sprites": self.sprite_system.serialize_state(),
-            "scanline": self._scanline,
-            "cycle": self._cycle,
+            "scanline": self.current_scanline,
+            "cycle": self.current_cycle,
             "frame_ready": self._frame_ready,
         }
 
@@ -153,10 +155,17 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self.memory.deserialize_state(state["memory"])
         self.registers.deserialize_state(state["registers"])
         self.sprite_system.deserialize_state(state["sprites"])
-        self._scanline = int(state["scanline"])
-        self._cycle = int(state["cycle"])
+        self.current_scanline = int(state["scanline"])
+        self.current_cycle = int(state["cycle"])
         self._frame_ready = bool(state["frame_ready"])
         self._render_frame()
+
+    def _complete_frame(self) -> None:
+        self._render_frame()
+        self._frame_ready = True
+        self.registers.set_vblank(False)
+        if self._debug_frame_completion:
+            print("[ppu] frame completed")
 
     def _render_frame(self) -> None:
         frame_indexes = self.background_renderer.render(
@@ -170,13 +179,13 @@ class NESPPU(VideoProcessor, MemoryDevice):
         )
         self.sprite_system.render(frame_indexes, self.memory, ctrl=self.registers.ctrl, mask=self.registers.mask)
 
-        pixels = bytearray(NES_WIDTH * NES_HEIGHT * 4)
+        pixels = bytearray(NES_WIDTH * NES_HEIGHT * 3)
         cursor = 0
         for row in frame_indexes:
             for palette_index in row:
                 r, g, b = NES_PALETTE[palette_index & 0x3F]
-                pixels[cursor : cursor + 4] = bytes((r, g, b, 0xFF))
-                cursor += 4
+                pixels[cursor : cursor + 3] = bytes((r, g, b))
+                cursor += 3
 
         self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=bytes(pixels))
         if self._frame_sink is not None:
