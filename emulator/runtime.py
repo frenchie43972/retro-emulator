@@ -64,20 +64,17 @@ class EmulatorRuntime:
         consumed = 0
         frame_rendered = False
         while consumed < self.config.cycles_per_frame or not frame_rendered:
-            print("[runtime] stepping CPU")
             cycles = self.platform.cpu.step(self.platform.bus)
             consumed += cycles
 
             ppu = self._resolve_ppu()
             if ppu is not None:
-                print("[runtime] stepping PPU")
                 ppu_cycles = cycles * getattr(ppu, "ppu_cycles_per_cpu_cycle", 1)
                 ppu.step(ppu_cycles)
 
             self.platform.audio.step(cycles)
 
             if self.platform.video.frame_ready():
-                print("[runtime] frame complete")
                 frame = self.platform.video.consume_frame()
                 frame_rendered = True
                 if not self._video_sink_connected:
@@ -85,6 +82,7 @@ class EmulatorRuntime:
                         self.video_output.render_frame(frame)
                     else:
                         self.video_output.display(frame)
+                print("[runtime] frame rendered")
 
             samples = self.platform.audio.pull_samples()
             if samples:

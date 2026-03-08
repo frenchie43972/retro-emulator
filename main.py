@@ -46,27 +46,29 @@ def _run_game_session(runtime) -> str:
     """Start the emulator loop for a launched title.
 
     Controls:
-    - Enter: step one frame
-    - b: exit game and return to ROM browser
-    - q: exit emulator completely
+    - ESC: exit game and return to ROM browser
+    - Window close button: exit emulator completely
     """
 
-    print("\nGame session started. Press Enter to step a frame, 'b' for browser, 'q' to quit.")
-    while True:
-        command = input("game> ").strip().lower()
+    print("\nGame session started. Running continuously at ~60 FPS. Press ESC to return to browser.")
 
-        if command == "q":
-            runtime.shutdown()
-            return "quit"
-        if command == "b":
+    clock = None
+    if hasattr(runtime.video_output, "_pygame"):
+        clock = runtime.video_output._pygame.time.Clock()
+
+    while True:
+        runtime.run_frame()
+
+        if hasattr(runtime.video_output, "browser_exit_requested") and runtime.video_output.browser_exit_requested():
             runtime.shutdown()
             return "browser"
 
-        runtime.run_frame()
         if hasattr(runtime.video_output, "exit_requested") and runtime.video_output.exit_requested():
             runtime.shutdown()
             return "quit"
-        print("[runtime] Frame executed.")
+
+        if clock is not None:
+            clock.tick(60)
 
 
 def _launch_selected_rom(library: ROMLibraryManager, launcher: ROMLauncher) -> str:

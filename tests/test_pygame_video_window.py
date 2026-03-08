@@ -43,6 +43,7 @@ class _FakePygame:
     K_x = 6
     K_RETURN = 7
     K_RSHIFT = 8
+    K_ESCAPE = 9
 
     def __init__(self):
         self.window = _FakeWindow()
@@ -95,6 +96,15 @@ class PygameVideoWindowTests(unittest.TestCase):
         self.assertEqual(fake_pygame.display_mode, (768, 720))
         self.assertGreaterEqual(fake_pygame.flip_count, 2)
         self.assertIsNotNone(fake_pygame.window.last_surface)
+
+    def test_escape_requests_return_to_browser(self):
+        fake_pygame = _FakePygame()
+        with patch.dict(sys.modules, {"pygame": fake_pygame}):
+            video = PygameWindowRenderer(width=256, height=240, scale=3, title="NES")
+            fake_pygame._events = [SimpleNamespace(type=fake_pygame.KEYDOWN, key=fake_pygame.K_ESCAPE)]
+            video._process_events()
+
+        self.assertTrue(video.browser_exit_requested())
 
     def test_missing_pygame_dependency_message(self):
         with patch.dict(sys.modules, {"pygame": None}):
