@@ -5,6 +5,7 @@ from platforms.nes.cpu_6502.cpu import (
     FLAG_CARRY,
     FLAG_INTERRUPT_DISABLE,
     FLAG_NEGATIVE,
+    FLAG_OVERFLOW,
     FLAG_ZERO,
     MOS6502CPU,
 )
@@ -69,6 +70,44 @@ class MOS6502CPUTests(unittest.TestCase):
         self.cpu.step(self.bus)
         self.cpu.step(self.bus)
         self.assertEqual(self.cpu.a, 0x20)
+
+
+    def test_bit_updates_flags_and_preserves_accumulator_zero_page(self):
+        self.bus.write(0x0010, 0xC0)
+        self._load_program([
+            0xA9,
+            0x3F,  # LDA #$3F
+            0x24,
+            0x10,  # BIT $10
+        ])
+
+        self.cpu.step(self.bus)
+        cycles = self.cpu.step(self.bus)
+
+        self.assertEqual(cycles, 3)
+        self.assertEqual(self.cpu.a, 0x3F)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, FLAG_NEGATIVE)
+        self.assertEqual(self.cpu.status & FLAG_OVERFLOW, FLAG_OVERFLOW)
+
+    def test_bit_absolute_updates_zero_negative_and_overflow_flags(self):
+        self.bus.write(0x1234, 0x00)
+        self._load_program([
+            0xA9,
+            0xFF,  # LDA #$FF
+            0x2C,
+            0x34,
+            0x12,  # BIT $1234
+        ])
+
+        self.cpu.step(self.bus)
+        cycles = self.cpu.step(self.bus)
+
+        self.assertEqual(cycles, 4)
+        self.assertEqual(self.cpu.a, 0xFF)
+        self.assertEqual(self.cpu.status & FLAG_ZERO, FLAG_ZERO)
+        self.assertEqual(self.cpu.status & FLAG_NEGATIVE, 0)
+        self.assertEqual(self.cpu.status & FLAG_OVERFLOW, 0)
 
     def test_zero_page_indexed_addressing(self):
         self.bus.write(0x0042, 0xAB)

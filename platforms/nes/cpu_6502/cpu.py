@@ -173,6 +173,9 @@ class MOS6502CPU(CPU):
             0x59: lambda: self._eor(self._absolute_y(), 4, add_page_cycle=True),
             0x41: lambda: self._eor(self._indexed_indirect(), 6),
             0x51: lambda: self._eor(self._indirect_indexed(), 5, add_page_cycle=True),
+            # BIT
+            0x24: lambda: self._bit(self._zero_page(), 3),
+            0x2C: lambda: self._bit(self._absolute(), 4),
             # Transfers
             0xAA: lambda: self._tax(),
             0xA8: lambda: self._tay(),
@@ -334,6 +337,13 @@ class MOS6502CPU(CPU):
         self.a ^= self.bus.read(addr.address)
         self._set_zn(self.a)
         return cycles + (1 if add_page_cycle and addr.page_crossed else 0)
+
+    def _bit(self, addr: _AddressingResult, cycles: int) -> int:
+        value = self.bus.read(addr.address)
+        self._set_flag(FLAG_ZERO, (self.a & value) == 0)
+        self._set_flag(FLAG_NEGATIVE, (value & 0x80) != 0)
+        self._set_flag(FLAG_OVERFLOW, (value & 0x40) != 0)
+        return cycles
 
     def _tax(self) -> int:
         self.x = self.a
