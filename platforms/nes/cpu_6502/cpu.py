@@ -200,6 +200,11 @@ class MOS6502CPU(CPU):
             0x98: lambda: self._tya(),
             0xBA: lambda: self._tsx(),
             0x9A: lambda: self._txs(),
+            # Stack
+            0x48: lambda: self._pha(),
+            0x68: lambda: self._pla(),
+            0x08: lambda: self._php(),
+            0x28: lambda: self._plp(),
             # INC/DEC
             0xE6: lambda: self._inc(self._zero_page(), 5),
             0xF6: lambda: self._inc(self._zero_page_x(), 6),
@@ -411,6 +416,24 @@ class MOS6502CPU(CPU):
     def _txs(self) -> int:
         self.stack_pointer = self.x
         return 2
+
+    def _pha(self) -> int:
+        self._push(self.a)
+        return 3
+
+    def _pla(self) -> int:
+        self.a = self._pop()
+        self._set_zn(self.a)
+        return 4
+
+    def _php(self) -> int:
+        self._push(self.status | FLAG_BREAK | FLAG_UNUSED)
+        return 3
+
+    def _plp(self) -> int:
+        self.status = self._pop()
+        self.status |= FLAG_UNUSED
+        return 4
 
     def _inc(self, addr: _AddressingResult, cycles: int) -> int:
         value = (self.bus.read(addr.address) + 1) & 0xFF
