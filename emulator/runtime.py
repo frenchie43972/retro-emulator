@@ -36,6 +36,7 @@ class EmulatorRuntime:
         self.config = config or RuntimeConfig()
         self.save_state_manager: SaveStateManager | None = None
         self._video_sink_connected = False
+        self._clock = None
 
     def initialize(self, rom_bytes: bytes) -> None:
         """Load cartridge, map it into memory, and reset all components."""
@@ -58,14 +59,12 @@ class EmulatorRuntime:
         self._load_persistent_ram_if_supported()
 
     def run_frame(self) -> None:
-        """Run enough CPU cycles to produce one video frame."""
+        """Run CPU/PPU/APU until the PPU reports a completed frame."""
         self._process_input()
 
-        consumed = 0
         frame_rendered = False
-        while consumed < self.config.cycles_per_frame or not frame_rendered:
+        while not frame_rendered:
             cycles = self.platform.cpu.step(self.platform.bus)
-            consumed += cycles
 
             ppu = self._resolve_ppu()
             if ppu is not None:
@@ -74,15 +73,15 @@ class EmulatorRuntime:
 
             self.platform.audio.step(cycles)
 
-            if self.platform.video.frame_ready():
-                frame = self.platform.video.consume_frame()
+            if self._frame_completed(ppu):
+                frame = self._consume_completed_frame(ppu)
                 frame_rendered = True
                 if not self._video_sink_connected:
                     if hasattr(self.video_output, "render_frame"):
                         self.video_output.render_frame(frame)
                     else:
                         self.video_output.display(frame)
-                print("[runtime] frame rendered")
+                self._pace_frame()
 
             samples = self.platform.audio.pull_samples()
             if samples:
@@ -113,6 +112,8 @@ class EmulatorRuntime:
         if hasattr(self.platform.video, "set_frame_sink") and hasattr(self.video_output, "render_frame"):
             self.platform.video.set_frame_sink(self.video_output.render_frame)
             self._video_sink_connected = True
+        if hasattr(self.video_output, "_pygame"):
+            self._clock = self.video_output._pygame.time.Clock()
 
     def _initialize_save_system(self) -> None:
         rom_key = "default"
@@ -141,3 +142,30 @@ class EmulatorRuntime:
             return self.platform.video
 
         return None
+
+    def _frame_completed(self, ppu) -> bool:
+        if ppu is None:
+            return False
+        if hasattr(ppu, "frame_complete"):
+            return bool(ppu.frame_complete)
+        if hasattr(ppu, "frame_ready"):
+            return bool(ppu.frame_ready())
+        return False
+
+    def _consume_completed_frame(self, ppu):
+        if ppu is not None and hasattr(ppu, "frame_complete"):
+            ppu.frame_complete = False
+            if hasattr(ppu, "framebuffer"):
+                return ppu.framebuffer
+
+        if hasattr(self.platform.video, "consume_frame"):
+            return self.platform.video.consume_frame()
+
+        if ppu is not None and hasattr(ppu, "_frame"):
+            return ppu._frame
+
+        raise RuntimeError("No frame source available after frame completion")
+
+    def _pace_frame(self) -> None:
+        if self._clock is not None:
+            self._clock.tick(60)
