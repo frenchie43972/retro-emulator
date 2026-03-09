@@ -177,7 +177,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
             print("[ppu] frame completed")
 
     def _render_frame(self) -> None:
-        frame_indexes = self.background_renderer.render(
+        background_frame = self.background_renderer.render(
             self.memory,
             ctrl=self.registers.ctrl,
             mask=self.registers.mask,
@@ -186,13 +186,22 @@ class NESPPU(VideoProcessor, MemoryDevice):
             width=NES_WIDTH,
             height=NES_HEIGHT,
         )
-        self.sprite_system.render(frame_indexes, self.memory, ctrl=self.registers.ctrl, mask=self.registers.mask)
+        sprite_frame = self.sprite_system.render(
+            self.memory,
+            ctrl=self.registers.ctrl,
+            mask=self.registers.mask,
+            width=NES_WIDTH,
+            height=NES_HEIGHT,
+            background_frame=background_frame,
+        )
 
         pixels = bytearray(NES_WIDTH * NES_HEIGHT * 3)
         cursor = 0
-        for row in frame_indexes:
-            for color_index in row:
-                palette_entry = self.memory.read(0x3F00 + (color_index & 0x0F))
+        for y in range(NES_HEIGHT):
+            for x in range(NES_WIDTH):
+                color_index = sprite_frame[y][x] if sprite_frame[y][x] != 0 else background_frame[y][x]
+                palette_address = 0x3F10 + (color_index & 0x0F) if color_index >= 0x10 else 0x3F00 + (color_index & 0x0F)
+                palette_entry = self.memory.read(palette_address)
                 r, g, b = NES_PALETTE[palette_entry & 0x3F]
                 pixels[cursor : cursor + 3] = bytes((r, g, b))
                 cursor += 3

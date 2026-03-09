@@ -14,14 +14,17 @@ class SpriteSystem:
 
     def render(
         self,
-        frame: list[list[int]],
         memory: PPUMemory,
         *,
         ctrl: int,
         mask: int,
-    ) -> None:
+        width: int,
+        height: int,
+        background_frame: list[list[int]],
+    ) -> list[list[int]]:
+        frame = [[0 for _ in range(width)] for _ in range(height)]
         if (mask & 0x10) == 0:
-            return
+            return frame
 
         sprite_height = 16 if (ctrl & 0x20) else 8
         pattern_base = 0x1000 if (ctrl & 0x08) else 0x0000
@@ -44,7 +47,7 @@ class SpriteSystem:
 
             for row in range(8):
                 y = sprite_y + row
-                if not (0 <= y < len(frame)):
+                if not (0 <= y < height):
                     continue
 
                 tile_row = 7 - row if flip_vertical else row
@@ -54,19 +57,21 @@ class SpriteSystem:
 
                 for col in range(8):
                     x = sprite_x + col
-                    if not (0 <= x < len(frame[0])):
+                    if not (0 <= x < width):
                         continue
 
                     bit = col if flip_horizontal else (7 - col)
                     color_bits = ((plane1 >> bit) & 1) << 1 | ((plane0 >> bit) & 1)
                     if color_bits == 0:
                         continue
-                    if behind_bg and frame[y][x] != 0:
+                    if behind_bg and background_frame[y][x] != 0:
                         continue
 
                     # Keep framebuffer entries as palette indexes (0x10-0x1F for sprites),
                     # matching background rendering which also stores palette indexes.
                     frame[y][x] = 0x10 + palette_select * 4 + color_bits
+
+        return frame
 
 
     def serialize_state(self) -> dict:
