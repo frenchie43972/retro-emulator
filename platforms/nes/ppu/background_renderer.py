@@ -17,6 +17,13 @@ class BackgroundRenderer:
             row.append(plane0_bit | (plane1_bit << 1))
         return row
 
+    @staticmethod
+    def _attribute_shift(tile_x: int, tile_y: int) -> int:
+        """Return bit shift for 2x2 tile quadrant inside one attribute byte."""
+        quadrant_x = (tile_x % 4) // 2
+        quadrant_y = (tile_y % 4) // 2
+        return (quadrant_y * 4) + (quadrant_x * 2)
+
     def render(
         self,
         memory: PPUMemory,
@@ -53,5 +60,11 @@ class BackgroundRenderer:
                 tile_addr = pattern_base + tile_index * 16
                 plane0 = memory.read(tile_addr + fine_y)
                 plane1 = memory.read(tile_addr + fine_y + 8)
-                frame[y][x] = self._decode_row(plane0, plane1)[fine_x]
+                attribute_addr = nt_address + 0x03C0 + (tile_y // 4) * 8 + (tile_x // 4)
+                attribute_byte = memory.read(attribute_addr)
+                palette_shift = self._attribute_shift(tile_x, tile_y)
+                palette_index = (attribute_byte >> palette_shift) & 0x03
+
+                pixel_value = self._decode_row(plane0, plane1)[fine_x]
+                frame[y][x] = pixel_value | (palette_index << 2)
         return frame
