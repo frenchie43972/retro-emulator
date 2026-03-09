@@ -32,6 +32,8 @@ class PPUMemory:
             self._write_pattern(local, value)
             return
         if local < 0x3F00:
+            if 0x2000 <= local <= 0x23FF:
+                print("[ppu] write", hex(local), value)
             self._nametables[self._map_nametable_address(local)] = value
             return
         self._palette_ram[self._map_palette_address(local)] = value
