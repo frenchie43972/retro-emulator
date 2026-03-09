@@ -143,12 +143,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
             self.registers._write_toggle = not self.registers._write_toggle
             return
         if register == 6:
-            if not self.registers._write_toggle:
-                self.registers._temp_addr = (value & 0x3F) << 8
-            else:
-                self.registers._temp_addr = (self.registers._temp_addr & 0x3F00) | value
-                self.registers.vram_addr = self.registers._temp_addr
-            self.registers._write_toggle = not self.registers._write_toggle
+            self.registers.write_ppuaddr(value)
             return
         if register == 7:
             self.memory.write(self.registers.vram_addr, value)
