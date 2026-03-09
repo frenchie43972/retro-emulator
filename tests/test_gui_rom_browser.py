@@ -47,10 +47,15 @@ class GuiRomBrowserTests(unittest.TestCase):
             def initialize(self):
                 self.initialized = True
 
-            def render(self, library):
+            @property
+            def visible_rows(self):
+                return 5
+
+            def render(self, library, scroll_offset=0):
                 self.rendered = True
                 assert library.refresh_calls > 0
                 assert library.selected_index == 1
+                assert scroll_offset == 0
 
             def shutdown(self):
                 self.shutdown_called = True
@@ -67,6 +72,52 @@ class GuiRomBrowserTests(unittest.TestCase):
         self.assertTrue(renderer.initialized)
         self.assertTrue(renderer.rendered)
         self.assertTrue(renderer.shutdown_called)
+
+
+class GuiRomMenuScrollTests(unittest.TestCase):
+    def test_scroll_offset_tracks_selected_index(self):
+        library = SimpleNamespace(
+            roms=[SimpleNamespace(file_name=f"ROM {i}") for i in range(20)],
+            selected_index=0,
+        )
+        menu = GuiRomMenu(library=library, launcher=SimpleNamespace())
+        menu.renderer = SimpleNamespace(visible_rows=5)
+
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 0)
+
+        library.selected_index = 4
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 0)
+
+        library.selected_index = 5
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 1)
+
+        library.selected_index = 10
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 6)
+
+        library.selected_index = 2
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 2)
+
+    def test_scroll_offset_clamps_to_bounds(self):
+        library = SimpleNamespace(
+            roms=[SimpleNamespace(file_name=f"ROM {i}") for i in range(3)],
+            selected_index=2,
+        )
+        menu = GuiRomMenu(library=library, launcher=SimpleNamespace())
+        menu.renderer = SimpleNamespace(visible_rows=5)
+
+        menu.scroll_offset = 99
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 0)
+
+        library.roms = []
+        menu.scroll_offset = 4
+        menu._sync_scroll_offset()
+        self.assertEqual(menu.scroll_offset, 0)
 
 
 if __name__ == "__main__":

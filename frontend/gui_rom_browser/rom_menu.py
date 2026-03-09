@@ -16,6 +16,7 @@ class GuiRomMenu:
         self.launcher = launcher
         self.renderer = MenuRenderer()
         self.input_handler = MenuInputHandler()
+        self.scroll_offset = 0
 
     def _run_game_session(self, runtime) -> str:
         clock = None
@@ -42,6 +43,23 @@ class GuiRomMenu:
             return
         self.library.selected_index = 0
 
+    def _sync_scroll_offset(self) -> None:
+        total_roms = len(self.library.roms)
+        if total_roms == 0:
+            self.scroll_offset = 0
+            return
+
+        visible_rows = self.renderer.visible_rows
+        max_scroll = max(0, total_roms - visible_rows)
+        self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
+
+        if self.library.selected_index < self.scroll_offset:
+            self.scroll_offset = self.library.selected_index
+        elif self.library.selected_index >= self.scroll_offset + visible_rows:
+            self.scroll_offset = self.library.selected_index - visible_rows + 1
+
+        self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
+
     def run(self) -> None:
         import pygame
 
@@ -51,7 +69,8 @@ class GuiRomMenu:
         while running:
             self.library.refresh()
             self._clamp_selected_index()
-            self.renderer.render(self.library)
+            self._sync_scroll_offset()
+            self.renderer.render(self.library, scroll_offset=self.scroll_offset)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -64,6 +83,7 @@ class GuiRomMenu:
 
                 if action.name == "move":
                     self.library.move_selection(action.delta)
+                    self._sync_scroll_offset()
                 elif action.name == "launch":
                     selected = self.library.selected_rom()
                     if selected is None:
@@ -77,6 +97,7 @@ class GuiRomMenu:
                 elif action.name == "refresh":
                     self.library.refresh()
                     self._clamp_selected_index()
+                    self._sync_scroll_offset()
                 elif action.name == "exit":
                     running = False
                     break
