@@ -75,7 +75,7 @@ class NESSpriteRenderingTests(unittest.TestCase):
             background_frame=[[0 for _ in range(8)] for _ in range(8)],
         )
 
-        self.assertEqual(sprite_frame[1][0], 0x11)
+        self.assertEqual(sprite_frame[1][0], 0x01)
 
 
 if __name__ == "__main__":

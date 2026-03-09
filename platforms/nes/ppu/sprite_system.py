@@ -67,9 +67,10 @@ class SpriteSystem:
                     if behind_bg and background_frame[y][x] != 0:
                         continue
 
-                    # Keep framebuffer entries as palette indexes (0x10-0x1F for sprites),
-                    # matching background rendering which also stores palette indexes.
-                    frame[y][x] = 0x10 + palette_select * 4 + color_bits
+                    # Sprite color 0 is transparent. Opaque pixels are kept as
+                    # sprite-palette indexes (1-15) and mapped via $3F10-$3F1F
+                    # in the frame composition stage.
+                    frame[y][x] = palette_select * 4 + color_bits
 
         return frame
 
