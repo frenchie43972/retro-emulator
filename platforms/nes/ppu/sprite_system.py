@@ -26,7 +26,8 @@ class SpriteSystem:
         sprite_height = 16 if (ctrl & 0x20) else 8
         pattern_base = 0x1000 if (ctrl & 0x08) else 0x0000
 
-        for sprite in range(64):
+        # Draw sprites in reverse OAM order so lower indexed sprites end up on top.
+        for sprite in range(63, -1, -1):
             base = sprite * 4
             sprite_y = self.oam[base] + 1
             tile_index = self.oam[base + 1]
@@ -63,8 +64,9 @@ class SpriteSystem:
                     if behind_bg and frame[y][x] != 0:
                         continue
 
-                    palette_addr = 0x3F10 + palette_select * 4 + color_bits
-                    frame[y][x] = memory.read(palette_addr) & 0x3F
+                    # Keep framebuffer entries as palette indexes (0x10-0x1F for sprites),
+                    # matching background rendering which also stores palette indexes.
+                    frame[y][x] = 0x10 + palette_select * 4 + color_bits
 
 
     def serialize_state(self) -> dict:
