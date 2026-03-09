@@ -72,6 +72,14 @@ class MOS6502CPU(CPU):
         self.cycles += consumed
         return consumed
 
+    def trigger_nmi(self) -> None:
+        self._push((self.program_counter >> 8) & 0xFF)
+        self._push(self.program_counter & 0xFF)
+        self._push((self.status & ~FLAG_BREAK) | FLAG_UNUSED)
+        self._set_flag(FLAG_INTERRUPT_DISABLE, True)
+        self.program_counter = self._read_u16(0xFFFA)
+        self.cycles += 7
+
     def serialize_state(self) -> dict:
         return {
             "cycles": self.cycles,

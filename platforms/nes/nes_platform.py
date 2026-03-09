@@ -97,9 +97,11 @@ class NESPlatform(Platform):
         self.memory_map = NESMemoryMap(self.memory_bus, self.ppu, self.controller, self.apu)
         self.memory_map.attach()
         self.saves_root = saves_root or Path("saves")
+        cpu = MOS6502CPU(self.memory_bus, debug=debug)
+        self.ppu.set_nmi_callback(cpu.trigger_nmi)
         super().__init__(
             name="nes",
-            cpu=MOS6502CPU(self.memory_bus, debug=debug),
+            cpu=cpu,
             video=self.ppu,
             audio=self.apu,
             cartridge=NESCartridge(),

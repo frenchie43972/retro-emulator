@@ -198,6 +198,21 @@ class MOS6502CPUTests(unittest.TestCase):
         self.cpu.step(self.bus)
         self.assertEqual(self.cpu.a, 0x03)
 
+    def test_trigger_nmi_pushes_state_and_jumps_to_nmi_vector(self):
+        self.bus.write(0xFFFA, 0x34)
+        self.bus.write(0xFFFB, 0x12)
+        self.cpu.program_counter = 0xC123
+        self.cpu.status = FLAG_ZERO
+
+        self.cpu.trigger_nmi()
+
+        self.assertEqual(self.cpu.program_counter, 0x1234)
+        self.assertTrue(self.cpu.status & FLAG_INTERRUPT_DISABLE)
+        self.assertEqual(self.cpu.stack_pointer, 0xFA)
+        self.assertEqual(self.bus.read(0x01FD), 0xC1)
+        self.assertEqual(self.bus.read(0x01FC), 0x23)
+        self.assertEqual(self.bus.read(0x01FB), FLAG_ZERO | 0x20)
+
     def test_cmp_immediate_updates_flags_and_preserves_accumulator(self):
         self._load_program([
             0xA9,
