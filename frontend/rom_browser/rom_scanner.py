@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 
 from core.cartridge import CartridgeLoader
 
 SUPPORTED_EXTENSIONS = {".nes"}
+SUPPORTED_NES_MAPPERS = {0, 1, 2, 3}
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,9 @@ class ROMScanner:
         flags6 = header[6]
         flags7 = header[7]
         mapper = (flags7 & 0xF0) | (flags6 >> 4)
+        if mapper not in SUPPORTED_NES_MAPPERS:
+            logger.info("Skipping ROM %s — unsupported mapper %s", path.name, mapper)
+            return None
 
         trainer_size = 512 if (flags6 & 0x04) else 0
         expected_size = 16 + trainer_size + (prg_banks * 0x4000) + (chr_banks * 0x2000)
