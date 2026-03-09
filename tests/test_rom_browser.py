@@ -64,16 +64,17 @@ class ROMBrowserTests(unittest.TestCase):
 
             self.assertEqual([item.file_name for item in found], ["visible.nes"])
 
-    def test_scanner_accepts_valid_header_even_with_unsupported_mapper(self):
+    def test_scanner_skips_unsupported_mapper_roms(self):
         with tempfile.TemporaryDirectory() as td:
             rom_dir = Path(td)
+            (rom_dir / "supported.nes").write_bytes(make_ines_rom(mapper=2))
             (rom_dir / "odd_mapper.nes").write_bytes(make_ines_rom(mapper=255))
 
             scanner = ROMScanner()
             found = scanner.scan_directories([rom_dir])
 
-            self.assertEqual([item.file_name for item in found], ["odd_mapper.nes"])
-            self.assertEqual(found[0].mapper, 255)
+            self.assertEqual([item.file_name for item in found], ["supported.nes"])
+            self.assertEqual(found[0].mapper, 2)
 
     def test_scanner_can_disable_recursive_search(self):
         with tempfile.TemporaryDirectory() as td:
