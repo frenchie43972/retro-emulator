@@ -110,6 +110,36 @@ class NESMemoryMapTests(unittest.TestCase):
         _ = platform.bus.read(0x3FFF)
         self.assertEqual(platform.bus.read(0x3FFF), 0x33)
 
+    def test_ppudata_write_uses_current_vram_address(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2006, 0x21)
+        platform.bus.write(0x2006, 0x10)
+        platform.bus.write(0x2007, 0xAB)
+
+        platform.bus.write(0x2006, 0x21)
+        platform.bus.write(0x2006, 0x10)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0xAB)
+
+    def test_ppudata_write_increments_vram_address_by_one_by_default(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        platform.bus.write(0x2007, 0x12)
+        platform.bus.write(0x2007, 0x34)
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0x12)
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x01)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0x34)
+
     def test_ppudata_write_respects_ctrl_increment_mode(self):
         platform = PluginLoader().load("nes")
 

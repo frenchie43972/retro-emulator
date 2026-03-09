@@ -146,7 +146,8 @@ class NESPPU(VideoProcessor, MemoryDevice):
             self.registers.write_ppuaddr(value)
             return
         if register == 7:
-            self.memory.write(self.registers.vram_addr, value)
+            vram_addr = self.registers.vram_addr
+            self.memory.write(vram_addr, value)
             self.registers.increment()
 
 
