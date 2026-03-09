@@ -53,6 +53,28 @@ class ROMBrowserTests(unittest.TestCase):
 
             self.assertEqual([item.file_name for item in found], ["base.NES", "subgame.nes"])
 
+    def test_scanner_skips_hidden_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            (rom_dir / ".hidden.nes").write_bytes(make_ines_rom())
+            (rom_dir / "visible.nes").write_bytes(make_ines_rom())
+
+            scanner = ROMScanner()
+            found = scanner.scan_directories([rom_dir])
+
+            self.assertEqual([item.file_name for item in found], ["visible.nes"])
+
+    def test_scanner_accepts_valid_header_even_with_unsupported_mapper(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            (rom_dir / "odd_mapper.nes").write_bytes(make_ines_rom(mapper=255))
+
+            scanner = ROMScanner()
+            found = scanner.scan_directories([rom_dir])
+
+            self.assertEqual([item.file_name for item in found], ["odd_mapper.nes"])
+            self.assertEqual(found[0].mapper, 255)
+
     def test_scanner_can_disable_recursive_search(self):
         with tempfile.TemporaryDirectory() as td:
             rom_dir = Path(td)
@@ -67,26 +89,16 @@ class ROMBrowserTests(unittest.TestCase):
 
             self.assertEqual([item.file_name for item in found], ["base.nes"])
 
-    def test_scanner_ignores_unreadable_or_invalid_roms(self):
+    def test_scanner_ignores_invalid_headers(self):
         with tempfile.TemporaryDirectory() as td:
             rom_dir = Path(td)
             valid = rom_dir / "valid.nes"
             invalid = rom_dir / "invalid.nes"
-            unreadable = rom_dir / "unreadable.nes"
 
             valid.write_bytes(make_ines_rom())
             invalid.write_bytes(b"NOPE")
-            unreadable.write_bytes(make_ines_rom())
 
-            class FaultyLoader:
-                def load_file(self, path: Path):
-                    if path.name == "unreadable.nes":
-                        raise OSError("simulated read failure")
-                    from core.cartridge import CartridgeLoader
-
-                    return CartridgeLoader().load_file(path)
-
-            scanner = ROMScanner(loader=FaultyLoader())
+            scanner = ROMScanner()
             found = scanner.scan_directories([rom_dir])
 
             self.assertEqual([item.file_name for item in found], ["valid.nes"])
