@@ -189,12 +189,25 @@ class NESControllerInputTests(unittest.TestCase):
         platform.controller.set_button_state("right", False)
 
         platform.bus.write(0x4016, 0x01)
+        platform.bus.write(0x4016, 0x00)
 
         reads = [platform.bus.read(0x4016) for _ in range(8)]
 
         self.assertEqual(reads, [1, 0, 1, 0, 1, 0, 1, 0])
         self.assertEqual(platform.bus.read(0x4016), 1)
 
+
+    def test_4016_strobe_high_keeps_returning_a_button(self):
+        platform = PluginLoader().load("nes")
+
+        platform.controller.set_button_state("z", True)
+        platform.controller.set_button_state("x", False)
+
+        platform.bus.write(0x4016, 0x01)
+
+        reads = [platform.bus.read(0x4016) for _ in range(4)]
+
+        self.assertEqual(reads, [1, 1, 1, 1])
 
 
 class NESBootTests(unittest.TestCase):
