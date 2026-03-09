@@ -57,8 +57,6 @@ class NESController(Controller):
 
     def read(self) -> int:
         if self._strobe:
-            self._latched_state = self.snapshot()
-            self._read_index = 0
             return self._latched_state[0]
 
         if self._read_index >= len(self._latched_state):
@@ -71,8 +69,6 @@ class NESController(Controller):
     def write(self, value: int) -> None:
         next_strobe = value & 0x01
         if next_strobe == 1:
-            self._read_index = 0
-        elif self._strobe == 1 and next_strobe == 0:
             self._latched_state = self.snapshot()
             self._read_index = 0
         self._strobe = next_strobe
