@@ -36,6 +36,12 @@ class GuiRomMenu:
             if clock is not None:
                 clock.tick(60)
 
+    def _clamp_selected_index(self) -> None:
+        if self.library.roms:
+            self.library.selected_index = min(self.library.selected_index, len(self.library.roms) - 1)
+            return
+        self.library.selected_index = 0
+
     def run(self) -> None:
         import pygame
 
@@ -44,10 +50,7 @@ class GuiRomMenu:
 
         while running:
             self.library.refresh()
-            if self.library.roms:
-                self.library.selected_index = min(self.library.selected_index, len(self.library.roms) - 1)
-            else:
-                self.library.selected_index = 0
+            self._clamp_selected_index()
             self.renderer.render(self.library)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -73,6 +76,7 @@ class GuiRomMenu:
                     self.renderer.initialize()
                 elif action.name == "refresh":
                     self.library.refresh()
+                    self._clamp_selected_index()
                 elif action.name == "exit":
                     running = False
                     break
