@@ -60,10 +60,9 @@ class EmulatorRuntime:
 
     def run_frame(self) -> None:
         """Run CPU/PPU/APU until the PPU reports a completed frame."""
+        self._process_input()
         frame_rendered = False
         while not frame_rendered:
-            self._process_input()
-
             cycles = self.platform.cpu.step(self.platform.bus)
 
             ppu = self._resolve_ppu()

@@ -103,6 +103,29 @@ class RuntimeIntegrationTests(unittest.TestCase):
         runtime.initialize(make_ines_rom(prg_banks=1, chr_banks=0))
         self.assertEqual(platform.bus.read(0x8000), 0x00)
 
+    def test_runtime_polls_input_once_per_frame(self):
+        class CountingInputProvider(KeyboardInputProvider):
+            def __init__(self) -> None:
+                super().__init__()
+                self.poll_count = 0
+
+            def poll(self) -> dict[str, bool]:
+                self.poll_count += 1
+                return super().poll()
+
+        platform = PluginLoader().load("null_platform")
+        video = FrameBufferVideoOutput()
+        audio = BufferedAudioOutput()
+        input_provider = CountingInputProvider()
+        input_provider.set_key_state("A", True)
+
+        runtime = EmulatorRuntime(platform, video, audio, input_provider)
+        runtime.initialize(b"\x00" * 4)
+        runtime.run_frame()
+
+        self.assertEqual(input_provider.poll_count, 1)
+        self.assertTrue(platform.controller.state.get("A"))
+
 
 if __name__ == "__main__":
     unittest.main()
