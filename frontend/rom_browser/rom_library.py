@@ -30,14 +30,15 @@ class ROMEntry:
 class ROMLibraryManager:
     """Maintains discovered ROMs and selection state."""
 
-    def __init__(self, scanner: ROMScanner, directories: list[Path]) -> None:
+    def __init__(self, scanner: ROMScanner, directories: list[Path], recursive_scan: bool = True) -> None:
         self.scanner = scanner
         self.directories = directories
+        self.recursive_scan = recursive_scan
         self.roms: list[ROMEntry] = []
         self.selected_index = 0
 
     def refresh(self) -> list[ROMEntry]:
-        metadata = self.scanner.scan_directories(self.directories)
+        metadata = self.scanner.scan_directories(self.directories, recursive=self.recursive_scan)
         self.roms = sorted(
             (ROMEntry.from_metadata(item) for item in metadata),
             key=lambda rom: rom.file_name.lower(),

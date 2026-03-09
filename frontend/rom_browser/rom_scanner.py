@@ -25,14 +25,16 @@ class ROMScanner:
     def __init__(self, loader: CartridgeLoader | None = None) -> None:
         self.loader = loader or CartridgeLoader()
 
-    def scan_directories(self, directories: list[Path]) -> list[ROMMetadata]:
+    def scan_directories(self, directories: list[Path], recursive: bool = True) -> list[ROMMetadata]:
         discovered: list[ROMMetadata] = []
         seen_paths: set[Path] = set()
 
         for directory in directories:
             if not directory.exists() or not directory.is_dir():
                 continue
-            for rom_path in sorted(directory.rglob("*")):
+
+            candidates = directory.rglob("*") if recursive else directory.iterdir()
+            for rom_path in sorted(candidates):
                 if not rom_path.is_file() or rom_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
                     continue
                 resolved = rom_path.resolve()

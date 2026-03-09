@@ -8,16 +8,16 @@ from frontend.gui_rom_browser import GuiRomMenu
 from frontend.rom_browser import ROMLauncher, ROMLibraryManager, ROMScanner, load_rom_browser_config
 
 
-def _load_configured_directories() -> list[Path]:
+def _load_config() -> tuple[list[Path], bool]:
     try:
         config = load_rom_browser_config()
     except FileNotFoundError:
         print("[error] Missing config file: rom_browser_config.json")
-        return []
+        return [], True
     except Exception as exc:
         print(f"[error] Could not load configuration: {exc}")
-        return []
-    return list(config.rom_directories)
+        return [], True
+    return list(config.rom_directories), config.recursive_scan
 
 
 def main() -> None:
@@ -26,7 +26,7 @@ def main() -> None:
     scanner = ROMScanner()
     launcher = ROMLauncher()
 
-    rom_directories = _load_configured_directories()
+    rom_directories, recursive_scan = _load_config()
     if not rom_directories:
         print("[error] Missing ROM directory. Set 'rom_directories' in rom_browser_config.json.")
         return
@@ -38,7 +38,7 @@ def main() -> None:
             print(f"  - {path}")
         return
 
-    library = ROMLibraryManager(scanner=scanner, directories=rom_directories)
+    library = ROMLibraryManager(scanner=scanner, directories=rom_directories, recursive_scan=recursive_scan)
     library.refresh()
 
     menu = GuiRomMenu(library=library, launcher=launcher)
