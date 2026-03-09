@@ -224,6 +224,23 @@ class NESControllerInputTests(unittest.TestCase):
 
         self.assertEqual(reads, [1, 1, 1, 1])
 
+    def test_write_4016_one_resets_shift_index(self):
+        platform = PluginLoader().load("nes")
+
+        platform.controller.set_button_state("z", False)
+        platform.controller.set_button_state("x", True)
+
+        platform.bus.write(0x4016, 0x01)
+        platform.bus.write(0x4016, 0x00)
+
+        self.assertEqual(platform.bus.read(0x4016), 0)
+        self.assertEqual(platform.bus.read(0x4016), 1)
+
+        platform.bus.write(0x4016, 0x01)
+        platform.bus.write(0x4016, 0x00)
+
+        self.assertEqual(platform.bus.read(0x4016), 0)
+
     def test_bus_uses_same_controller_instance_as_platform_input(self):
         platform = PluginLoader().load("nes")
 
