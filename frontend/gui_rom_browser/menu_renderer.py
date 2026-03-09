@@ -23,6 +23,13 @@ class MenuRenderer:
         self._title_font = None
         self._item_font = None
 
+    @property
+    def visible_rows(self) -> int:
+        top_y = 120
+        bottom_reserved = 72
+        row_height = 36
+        return max(1, (self.height - top_y - bottom_reserved) // row_height)
+
     def initialize(self) -> None:
         import pygame
 
@@ -34,7 +41,7 @@ class MenuRenderer:
         self._title_font = pygame.font.SysFont("consolas", 48)
         self._item_font = pygame.font.SysFont("consolas", 30)
 
-    def render(self, library: ROMLibraryManager) -> None:
+    def render(self, library: ROMLibraryManager, scroll_offset: int = 0) -> None:
         if self._window is None:
             self.initialize()
 
@@ -47,8 +54,12 @@ class MenuRenderer:
             no_roms = self._item_font.render("No .nes ROMs found in configured roms/ directory.", True, self.ITEM_COLOR)
             self._window.blit(no_roms, (32, 120))
         else:
+            total_roms = len(library.roms)
+            max_scroll = max(0, total_roms - self.visible_rows)
+            scroll_offset = max(0, min(scroll_offset, max_scroll))
+            visible_roms = library.roms[scroll_offset : scroll_offset + self.visible_rows]
             y = 120
-            for idx, rom in enumerate(library.roms):
+            for idx, rom in enumerate(visible_roms, start=scroll_offset):
                 selected = idx == library.selected_index
                 marker = "> " if selected else "  "
                 color = self.SELECTED_COLOR if selected else self.ITEM_COLOR
