@@ -110,6 +110,39 @@ class NESMemoryMapTests(unittest.TestCase):
         _ = platform.bus.read(0x3FFF)
         self.assertEqual(platform.bus.read(0x3FFF), 0x33)
 
+    def test_ppudata_write_respects_ctrl_increment_mode(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2000, 0x04)
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        platform.bus.write(0x2007, 0x11)
+        platform.bus.write(0x2007, 0x22)
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0x11)
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x20)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0x22)
+
+    def test_ppustatus_read_resets_ppuaddr_latch(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2006, 0x21)
+        _ = platform.bus.read(0x2002)
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        platform.bus.write(0x2007, 0x66)
+
+        platform.bus.write(0x2006, 0x20)
+        platform.bus.write(0x2006, 0x00)
+        _ = platform.bus.read(0x2007)
+        self.assertEqual(platform.bus.read(0x2007), 0x66)
+
 
 class NESControllerInputTests(unittest.TestCase):
     def test_latched_reads_shift_controller_bits_from_4016(self):

@@ -32,6 +32,18 @@ class PPURegisters:
         step = 32 if (self.ctrl & 0x04) else 1
         self.vram_addr = (self.vram_addr + step) & 0x3FFF
 
+    def write_ppuaddr(self, value: int) -> None:
+        """Handle the two-write PPUADDR latch behavior."""
+        value &= 0xFF
+        if not self._write_toggle:
+            self._temp_addr = (value & 0x3F) << 8
+            self._write_toggle = True
+            return
+
+        self._temp_addr = (self._temp_addr & 0x3F00) | value
+        self.vram_addr = self._temp_addr & 0x3FFF
+        self._write_toggle = False
+
     def reset_latch(self) -> None:
         self._write_toggle = False
 
