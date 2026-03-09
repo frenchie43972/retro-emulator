@@ -44,6 +44,10 @@ class GuiRomMenu:
 
         while running:
             self.library.refresh()
+            if self.library.roms:
+                self.library.selected_index = min(self.library.selected_index, len(self.library.roms) - 1)
+            else:
+                self.library.selected_index = 0
             self.renderer.render(self.library)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
