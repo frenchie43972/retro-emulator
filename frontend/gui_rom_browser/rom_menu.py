@@ -19,12 +19,28 @@ class GuiRomMenu:
         self.scroll_offset = 0
 
     def _run_game_session(self, runtime) -> str:
+        import pygame
+
         clock = None
         if hasattr(runtime.video_output, "_pygame"):
             clock = runtime.video_output._pygame.time.Clock()
 
-        while True:
+        running = True
+        while running:
             runtime.run_frame()
+
+            # Keep the pygame event queue active every frame so keyboard input
+            # remains responsive while a ROM is running.
+            pygame.event.pump()
+
+            if pygame.key.get_pressed()[pygame.K_ESCAPE]:
+                running = False
+                continue
+
+            for event in pygame.event.get([pygame.QUIT]):
+                if event.type == pygame.QUIT:
+                    runtime.shutdown()
+                    return "quit"
 
             if hasattr(runtime.video_output, "browser_exit_requested") and runtime.video_output.browser_exit_requested():
                 runtime.shutdown()
@@ -36,6 +52,9 @@ class GuiRomMenu:
 
             if clock is not None:
                 clock.tick(60)
+
+        runtime.shutdown()
+        return "menu"
 
     def _clamp_selected_index(self) -> None:
         if self.library.roms:
