@@ -238,9 +238,16 @@ class NESControllerInputTests(unittest.TestCase):
         ppu.sprite_system.oam[0:4] = bytes((0, 0, 0x00, 0))
         ppu.sprite_system.oam[4:8] = bytes((0, 0, 0x01, 0))
 
-        ppu.sprite_system.render(frame, ppu.memory, ctrl=0x00, mask=0x10)
+        frame = ppu.sprite_system.render(
+            ppu.memory,
+            ctrl=0x00,
+            mask=0x10,
+            width=len(frame[0]),
+            height=len(frame),
+            background_frame=[[0 for _ in range(len(frame[0]))] for _ in range(len(frame))],
+        )
 
-        self.assertEqual(frame[1][0], 0x11)
+        self.assertEqual(frame[1][0], 0x01)
 
     def test_sprite_horizontal_flip_is_applied(self):
         ppu = NESPPU()
@@ -252,10 +259,17 @@ class NESControllerInputTests(unittest.TestCase):
 
         ppu.sprite_system.oam[0:4] = bytes((0, 0, 0x40, 10))
 
-        ppu.sprite_system.render(frame, ppu.memory, ctrl=0x00, mask=0x10)
+        frame = ppu.sprite_system.render(
+            ppu.memory,
+            ctrl=0x00,
+            mask=0x10,
+            width=len(frame[0]),
+            height=len(frame),
+            background_frame=[[0 for _ in range(len(frame[0]))] for _ in range(len(frame))],
+        )
 
         self.assertEqual(frame[1][10], 0)
-        self.assertEqual(frame[1][17], 0x11)
+        self.assertEqual(frame[1][17], 0x01)
 
 class NESBootTests(unittest.TestCase):
     def test_reset_vector_and_prg_execution(self):
