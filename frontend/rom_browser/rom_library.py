@@ -38,7 +38,10 @@ class ROMLibraryManager:
 
     def refresh(self) -> list[ROMEntry]:
         metadata = self.scanner.scan_directories(self.directories)
-        self.roms = [ROMEntry.from_metadata(item) for item in metadata]
+        self.roms = sorted(
+            (ROMEntry.from_metadata(item) for item in metadata),
+            key=lambda rom: rom.file_name.lower(),
+        )
         if not self.roms:
             self.selected_index = 0
         else:

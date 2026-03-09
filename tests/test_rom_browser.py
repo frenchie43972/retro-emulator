@@ -36,6 +36,23 @@ class ROMBrowserTests(unittest.TestCase):
             self.assertEqual(found[0].platform, "nes")
             self.assertEqual(found[0].mapper, 0)
 
+
+    def test_library_refresh_rescans_and_sorts_roms(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            (rom_dir / "zelda.nes").write_bytes(make_ines_rom())
+
+            library = ROMLibraryManager(ROMScanner(), [rom_dir])
+            library.refresh()
+            self.assertEqual([rom.file_name for rom in library.roms], ["zelda.nes"])
+
+            added = rom_dir / "mario.nes"
+            added.write_bytes(make_ines_rom())
+            library.refresh()
+
+            self.assertEqual([rom.file_name for rom in library.roms], ["mario.nes", "zelda.nes"])
+            self.assertEqual(library.roms[0].file_path, added.resolve())
+
     def test_launcher_initializes_nes_runtime(self):
         with tempfile.TemporaryDirectory() as td:
             rom_path = Path(td) / "duckhunt.nes"

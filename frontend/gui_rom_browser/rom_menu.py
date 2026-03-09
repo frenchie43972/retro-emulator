@@ -43,6 +43,7 @@ class GuiRomMenu:
         running = True
 
         while running:
+            self.library.refresh()
             self.renderer.render(self.library)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -66,6 +67,8 @@ class GuiRomMenu:
                         running = False
                         break
                     self.renderer.initialize()
+                elif action.name == "refresh":
+                    self.library.refresh()
                 elif action.name == "exit":
                     running = False
                     break

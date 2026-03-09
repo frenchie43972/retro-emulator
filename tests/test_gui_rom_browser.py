@@ -16,6 +16,7 @@ class GuiRomBrowserTests(unittest.TestCase):
         self.assertEqual(handler.action_for_key(pygame.K_UP).delta, -1)
         self.assertEqual(handler.action_for_key(pygame.K_DOWN).delta, 1)
         self.assertEqual(handler.action_for_key(pygame.K_RETURN).name, "launch")
+        self.assertEqual(handler.action_for_key(pygame.K_r).name, "refresh")
         self.assertEqual(handler.action_for_key(pygame.K_ESCAPE).name, "exit")
 
 

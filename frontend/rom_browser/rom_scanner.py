@@ -47,15 +47,21 @@ class ROMScanner:
     def _extract_metadata(self, path: Path) -> ROMMetadata | None:
         try:
             cartridge = self.loader.load_file(path)
-        except CartridgeLoadError:
+        except (CartridgeLoadError, OSError, PermissionError):
+            return None
+
+        try:
+            rom_size = path.stat().st_size
+            resolved_path = path.resolve()
+        except OSError:
             return None
 
         format_name = cartridge.metadata.format_name.lower()
         platform = "nes" if format_name == "ines" else "unknown"
         return ROMMetadata(
             file_name=path.name,
-            file_path=path.resolve(),
+            file_path=resolved_path,
             platform=platform,
-            rom_size=path.stat().st_size,
+            rom_size=rom_size,
             mapper=cartridge.metadata.mapper,
         )
