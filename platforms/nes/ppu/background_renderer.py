@@ -6,6 +6,17 @@ from .ppu_memory import PPUMemory
 
 
 class BackgroundRenderer:
+    @staticmethod
+    def _decode_row(plane0: int, plane1: int) -> list[int]:
+        """Decode one 8-pixel tile row from NES bitplanes into palette indexes 0-3."""
+        row: list[int] = []
+        for pixel in range(8):
+            shift = 7 - pixel
+            plane0_bit = (plane0 >> shift) & 1
+            plane1_bit = (plane1 >> shift) & 1
+            row.append(plane0_bit | (plane1_bit << 1))
+        return row
+
     def render(
         self,
         memory: PPUMemory,
@@ -42,16 +53,5 @@ class BackgroundRenderer:
                 tile_addr = pattern_base + tile_index * 16
                 plane0 = memory.read(tile_addr + fine_y)
                 plane1 = memory.read(tile_addr + fine_y + 8)
-                color_bits = ((plane1 >> (7 - fine_x)) & 1) << 1 | ((plane0 >> (7 - fine_x)) & 1)
-
-                if color_bits == 0:
-                    frame[y][x] = memory.read(0x3F00) & 0x3F
-                    continue
-
-                attr_addr = nt_address + 0x03C0 + (tile_y // 4) * 8 + (tile_x // 4)
-                attr_byte = memory.read(attr_addr)
-                quadrant = ((tile_y % 4) // 2) * 2 + ((tile_x % 4) // 2)
-                palette_select = (attr_byte >> (quadrant * 2)) & 0x03
-                palette_addr = 0x3F00 + palette_select * 4 + color_bits
-                frame[y][x] = memory.read(palette_addr) & 0x3F
+                frame[y][x] = self._decode_row(plane0, plane1)[fine_x]
         return frame

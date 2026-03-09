@@ -60,7 +60,7 @@ class SpriteSystem:
                     color_bits = ((plane1 >> bit) & 1) << 1 | ((plane0 >> bit) & 1)
                     if color_bits == 0:
                         continue
-                    if behind_bg and frame[y][x] != (memory.read(0x3F00) & 0x3F):
+                    if behind_bg and frame[y][x] != 0:
                         continue
 
                     palette_addr = 0x3F10 + palette_select * 4 + color_bits
