@@ -74,11 +74,10 @@ class EmulatorRuntime:
             if self._frame_completed(ppu):
                 frame = self._consume_completed_frame(ppu)
                 frame_rendered = True
-                if not self._video_sink_connected:
-                    if hasattr(self.video_output, "render_frame"):
-                        self.video_output.render_frame(frame)
-                    else:
-                        self.video_output.display(frame)
+                if hasattr(self.video_output, "render_frame"):
+                    self.video_output.render_frame(frame)
+                else:
+                    self.video_output.display(frame)
                 self._pace_frame()
 
             samples = self.platform.audio.pull_samples()

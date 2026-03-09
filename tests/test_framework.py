@@ -7,6 +7,7 @@ from emulator.bus import MappedMemoryBus, RAM
 from emulator.io import BufferedAudioOutput, FrameBufferVideoOutput, KeyboardInputProvider
 from emulator.plugin import PluginLoader
 from emulator.runtime import EmulatorRuntime
+from emulator.interfaces import FrameBuffer
 
 
 def make_ines_rom(
@@ -125,6 +126,52 @@ class RuntimeIntegrationTests(unittest.TestCase):
 
         self.assertEqual(input_provider.poll_count, 1)
         self.assertTrue(platform.controller.state.get("A"))
+
+
+class RuntimeVideoPipelineTests(unittest.TestCase):
+    def test_runtime_renders_frame_even_with_connected_frame_sink(self):
+        class SinkCapableVideo:
+            def __init__(self) -> None:
+                self._ready = False
+                self._frame = None
+                self._sink = None
+
+            def reset(self) -> None:
+                self._ready = False
+
+            def step(self, cycles: int) -> None:
+                if cycles > 0:
+                    self._frame = FrameBuffer(width=1, height=1, pixels=b"\x01\x02\x03\x04")
+                    self._ready = True
+
+            def frame_ready(self) -> bool:
+                return self._ready
+
+            def consume_frame(self) -> FrameBuffer:
+                self._ready = False
+                return self._frame
+
+            def set_frame_sink(self, frame_sink):
+                self._sink = frame_sink
+
+        class RenderFrameVideoOutput(FrameBufferVideoOutput):
+            def render_frame(self, frame: FrameBuffer) -> None:
+                self.display(frame)
+
+        platform = PluginLoader().load("null_platform")
+        platform.video = SinkCapableVideo()
+
+        runtime = EmulatorRuntime(
+            platform,
+            RenderFrameVideoOutput(),
+            BufferedAudioOutput(),
+            KeyboardInputProvider(),
+        )
+        runtime.initialize(b"\x00" * 4)
+        runtime.run_frame()
+
+        self.assertIsNotNone(runtime.video_output.last_frame)
+
 
 
 if __name__ == "__main__":
