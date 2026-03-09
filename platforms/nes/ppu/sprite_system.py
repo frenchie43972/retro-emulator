@@ -64,13 +64,12 @@ class SpriteSystem:
                     color_bits = ((plane1 >> bit) & 1) << 1 | ((plane0 >> bit) & 1)
                     if color_bits == 0:
                         continue
-                    if behind_bg and background_frame[y][x] != 0:
-                        continue
 
                     # Sprite color 0 is transparent. Opaque pixels are kept as
                     # sprite-palette indexes (1-15) and mapped via $3F10-$3F1F
                     # in the frame composition stage.
-                    frame[y][x] = palette_select * 4 + color_bits
+                    sprite_color = palette_select * 4 + color_bits
+                    frame[y][x] = sprite_color | (0x80 if behind_bg else 0x00)
 
         return frame
 
