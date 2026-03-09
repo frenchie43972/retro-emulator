@@ -37,13 +37,17 @@ class ControllerRegisters(MemoryDevice):
         if self._strobe:
             self._latched_state_p1 = self.controller1.snapshot()
             self._read_index_p1 = 0
-            return self._latched_state_p1[0]
+            value = self._latched_state_p1[0]
+            print("[controller] read", value)
+            return value
 
         if self._read_index_p1 >= len(self._latched_state_p1):
+            print("[controller] read", 1)
             return 1
 
         value = self._latched_state_p1[self._read_index_p1]
         self._read_index_p1 += 1
+        print("[controller] read", value)
         return value
 
 
