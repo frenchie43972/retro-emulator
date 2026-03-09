@@ -160,6 +160,21 @@ class NESMemoryMapTests(unittest.TestCase):
         _ = platform.bus.read(0x2007)
         self.assertEqual(platform.bus.read(0x2007), 0x22)
 
+
+    def test_oamaddr_and_oamdata_access_oam_with_auto_increment(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2003, 0x10)
+        platform.bus.write(0x2004, 0xAA)
+        platform.bus.write(0x2004, 0xBB)
+
+        self.assertEqual(platform.ppu.sprite_system.oam[0x10], 0xAA)
+        self.assertEqual(platform.ppu.sprite_system.oam[0x11], 0xBB)
+        self.assertEqual(platform.ppu.registers.oam_addr, 0x12)
+
+        platform.bus.write(0x2003, 0x10)
+        self.assertEqual(platform.bus.read(0x2004), 0xAA)
+
     def test_ppustatus_read_resets_ppuaddr_latch(self):
         platform = PluginLoader().load("nes")
 
@@ -209,6 +224,38 @@ class NESControllerInputTests(unittest.TestCase):
 
         self.assertEqual(reads, [1, 1, 1, 1])
 
+
+
+    def test_sprite_rendering_uses_oam_priority_order(self):
+        ppu = NESPPU()
+
+        for row in range(8):
+            ppu.memory.write(row, 0xFF)
+            ppu.memory.write(row + 8, 0x00)
+
+        frame = [[0 for _ in range(16)] for _ in range(16)]
+
+        ppu.sprite_system.oam[0:4] = bytes((0, 0, 0x00, 0))
+        ppu.sprite_system.oam[4:8] = bytes((0, 0, 0x01, 0))
+
+        ppu.sprite_system.render(frame, ppu.memory, ctrl=0x00, mask=0x10)
+
+        self.assertEqual(frame[1][0], 0x11)
+
+    def test_sprite_horizontal_flip_is_applied(self):
+        ppu = NESPPU()
+
+        ppu.memory.write(0, 0x80)
+        ppu.memory.write(8, 0x00)
+
+        frame = [[0 for _ in range(24)] for _ in range(16)]
+
+        ppu.sprite_system.oam[0:4] = bytes((0, 0, 0x40, 10))
+
+        ppu.sprite_system.render(frame, ppu.memory, ctrl=0x00, mask=0x10)
+
+        self.assertEqual(frame[1][10], 0)
+        self.assertEqual(frame[1][17], 0x11)
 
 class NESBootTests(unittest.TestCase):
     def test_reset_vector_and_prg_execution(self):
