@@ -16,6 +16,7 @@ class ControllerRegisters(MemoryDevice):
     controller1: NESController
     _latched_state_p1: tuple[int, ...] = field(default_factory=tuple)
     _read_index_p1: int = 0
+    _strobe: int = 0
 
     def read(self, address: int) -> int:
         if address == 0:
@@ -27,11 +28,17 @@ class ControllerRegisters(MemoryDevice):
     def write(self, address: int, value: int) -> None:
         if address != 0:
             return
-        _ = value
-        self._latched_state_p1 = self.controller1.snapshot()
-        self._read_index_p1 = 0
+        self._strobe = value & 0x01
+        if self._strobe:
+            self._latched_state_p1 = self.controller1.snapshot()
+            self._read_index_p1 = 0
 
     def _read_port1(self) -> int:
+        if self._strobe:
+            self._latched_state_p1 = self.controller1.snapshot()
+            self._read_index_p1 = 0
+            return self._latched_state_p1[0]
+
         if self._read_index_p1 >= len(self._latched_state_p1):
             return 1
 
@@ -44,8 +51,10 @@ class ControllerRegisters(MemoryDevice):
         return {
             "latched_state_p1": list(self._latched_state_p1),
             "read_index_p1": self._read_index_p1,
+            "strobe": self._strobe,
         }
 
     def deserialize_state(self, state: dict) -> None:
         self._latched_state_p1 = tuple(int(v) for v in state["latched_state_p1"])
         self._read_index_p1 = int(state["read_index_p1"])
+        self._strobe = int(state.get("strobe", 0)) & 0x01
