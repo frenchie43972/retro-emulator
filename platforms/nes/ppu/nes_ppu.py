@@ -136,7 +136,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
         register = address % 8
         value &= 0xFF
         if register == 0:
-            self.registers.ctrl = value
+            self.registers.write_ppuctrl(value)
             return
         if register == 1:
             self.registers.mask = value
@@ -149,11 +149,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
             self.registers.oam_addr = (self.registers.oam_addr + 1) & 0xFF
             return
         if register == 5:
-            if not self.registers._write_toggle:
-                self.registers.scroll_x = value
-            else:
-                self.registers.scroll_y = value
-            self.registers._write_toggle = not self.registers._write_toggle
+            self.registers.write_ppuscroll(value)
             return
         if register == 6:
             self.registers.write_ppuaddr(value)
@@ -190,12 +186,13 @@ class NESPPU(VideoProcessor, MemoryDevice):
             print("[ppu] frame completed")
 
     def _render_background(self) -> list[list[int]]:
+        self.registers.vram_addr = self.registers._temp_addr & 0x3FFF
         return self.background_renderer.render(
             self.memory,
             ctrl=self.registers.ctrl,
             mask=self.registers.mask,
-            scroll_x=self.registers.scroll_x,
-            scroll_y=self.registers.scroll_y,
+            scroll_x=((self.registers.vram_addr & 0x001F) << 3) | self.registers.fine_x,
+            scroll_y=((self.registers.vram_addr >> 12) & 0x07) | (((self.registers.vram_addr >> 5) & 0x1F) << 3),
             width=NES_WIDTH,
             height=NES_HEIGHT,
         )
