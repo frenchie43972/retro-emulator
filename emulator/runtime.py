@@ -60,16 +60,15 @@ class EmulatorRuntime:
 
     def run_frame(self) -> None:
         """Run CPU/PPU/APU until the PPU reports a completed frame."""
-        self._process_input()
-
         frame_rendered = False
         while not frame_rendered:
+            self._process_input()
+
             cycles = self.platform.cpu.step(self.platform.bus)
 
             ppu = self._resolve_ppu()
             if ppu is not None:
-                ppu_cycles = cycles * getattr(ppu, "ppu_cycles_per_cpu_cycle", 1)
-                ppu.step(ppu_cycles)
+                ppu.step(cycles * 3)
 
             self.platform.audio.step(cycles)
 
@@ -112,7 +111,7 @@ class EmulatorRuntime:
         if hasattr(self.platform.video, "set_frame_sink") and hasattr(self.video_output, "render_frame"):
             self.platform.video.set_frame_sink(self.video_output.render_frame)
             self._video_sink_connected = True
-        if hasattr(self.video_output, "_pygame"):
+        if hasattr(self.video_output, "_pygame") and hasattr(self.video_output._pygame, "time"):
             self._clock = self.video_output._pygame.time.Clock()
 
     def _initialize_save_system(self) -> None:
