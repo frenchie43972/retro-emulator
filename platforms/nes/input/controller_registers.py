@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from emulator.interfaces import MemoryDevice
 
@@ -14,16 +14,9 @@ class ControllerRegisters(MemoryDevice):
     """Implements serial reads for controller ports."""
 
     controller1: NESController
-    _latched_state_p1: tuple[int, ...] = field(default_factory=tuple)
-    _read_index_p1: int = 0
-    _strobe: int = 0
-
-    def __post_init__(self) -> None:
-        self._latched_state_p1 = self.controller1.snapshot()
-
     def read(self, address: int) -> int:
         if address == 0:
-            return self._read_port1()
+            return self.controller1.read()
         if address == 1:
             return 0
         return 0
@@ -31,36 +24,11 @@ class ControllerRegisters(MemoryDevice):
     def write(self, address: int, value: int) -> None:
         if address != 0:
             return
-        next_strobe = value & 0x01
-        if next_strobe == 1:
-            self._read_index_p1 = 0
-        elif self._strobe == 1 and next_strobe == 0:
-            self._latched_state_p1 = self.controller1.snapshot()
-            self._read_index_p1 = 0
-        self._strobe = next_strobe
-
-    def _read_port1(self) -> int:
-        if self._strobe:
-            self._latched_state_p1 = self.controller1.snapshot()
-            self._read_index_p1 = 0
-            return self._latched_state_p1[0]
-
-        if self._read_index_p1 >= len(self._latched_state_p1):
-            return 1
-
-        value = self._latched_state_p1[self._read_index_p1]
-        self._read_index_p1 += 1
-        return value
+        self.controller1.write(value)
 
 
     def serialize_state(self) -> dict:
-        return {
-            "latched_state_p1": list(self._latched_state_p1),
-            "read_index_p1": self._read_index_p1,
-            "strobe": self._strobe,
-        }
+        return {}
 
     def deserialize_state(self, state: dict) -> None:
-        self._latched_state_p1 = tuple(int(v) for v in state["latched_state_p1"])
-        self._read_index_p1 = int(state["read_index_p1"])
-        self._strobe = int(state.get("strobe", 0)) & 0x01
+        _ = state

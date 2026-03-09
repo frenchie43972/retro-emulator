@@ -21,16 +21,16 @@ class NESMemoryBus(MappedMemoryBus):
         super().__init__()
         self.debug = debug
         self._logger = logging.getLogger("platforms.nes.bus")
-        self._controllers: ControllerRegisters | None = None
+        self._controller: NESController | None = None
 
-    def set_controller_registers(self, controllers: "ControllerRegisters") -> None:
-        """Attach controller registers for direct $4016 CPU-bus access."""
+    def set_controller(self, controller: "NESController") -> None:
+        """Attach controller for direct $4016 CPU-bus access."""
 
-        self._controllers = controllers
+        self._controller = controller
 
     def read(self, address: int) -> int:
-        if address == 0x4016 and self._controllers is not None:
-            value = self._controllers.read(0)
+        if address == 0x4016 and self._controller is not None:
+            value = self._controller.read()
         else:
             value = super().read(address)
         if self.debug:
@@ -40,8 +40,8 @@ class NESMemoryBus(MappedMemoryBus):
     def write(self, address: int, value: int) -> None:
         if self.debug:
             self._logger.debug("write $%04X <- $%02X", address, value)
-        if address == 0x4016 and self._controllers is not None:
-            self._controllers.write(0, value)
+        if address == 0x4016 and self._controller is not None:
+            self._controller.write(value)
             return
         super().write(address, value)
 
@@ -94,7 +94,7 @@ class NESMemoryMap:
         self.ppu = ppu
         self.apu = apu
         self.controllers = ControllerRegisters(controller1=controller1)
-        self.bus.set_controller_registers(self.controllers)
+        self.bus.set_controller(controller1)
         self.io_registers = IORegisterBridge(controllers=self.controllers, apu=self.apu)
         self.disabled = DisabledRegisterPlaceholder()
         self.open_bus = OpenBusPlaceholder()
