@@ -93,6 +93,19 @@ class NESPPU(VideoProcessor, MemoryDevice):
                 if self.current_scanline >= 262:
                     self.current_scanline = 0
 
+
+    @property
+    def frame_complete(self) -> bool:
+        return self._frame_ready
+
+    @frame_complete.setter
+    def frame_complete(self, value: bool) -> None:
+        self._frame_ready = bool(value)
+
+    @property
+    def framebuffer(self) -> FrameBuffer:
+        return self._frame
+
     def frame_ready(self) -> bool:
         return self._frame_ready
 
