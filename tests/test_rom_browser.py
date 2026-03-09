@@ -37,6 +37,60 @@ class ROMBrowserTests(unittest.TestCase):
             self.assertEqual(found[0].mapper, 0)
 
 
+
+    def test_scanner_is_case_insensitive_and_recursive(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            nested = rom_dir / "nested"
+            nested.mkdir()
+
+            (rom_dir / "base.NES").write_bytes(make_ines_rom())
+            (nested / "subgame.nes").write_bytes(make_ines_rom())
+            (nested / "notes.md").write_text("not a rom", encoding="utf-8")
+
+            scanner = ROMScanner()
+            found = scanner.scan_directories([rom_dir])
+
+            self.assertEqual([item.file_name for item in found], ["base.NES", "subgame.nes"])
+
+    def test_scanner_can_disable_recursive_search(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            nested = rom_dir / "nested"
+            nested.mkdir()
+
+            (rom_dir / "base.nes").write_bytes(make_ines_rom())
+            (nested / "subgame.nes").write_bytes(make_ines_rom())
+
+            scanner = ROMScanner()
+            found = scanner.scan_directories([rom_dir], recursive=False)
+
+            self.assertEqual([item.file_name for item in found], ["base.nes"])
+
+    def test_scanner_ignores_unreadable_or_invalid_roms(self):
+        with tempfile.TemporaryDirectory() as td:
+            rom_dir = Path(td)
+            valid = rom_dir / "valid.nes"
+            invalid = rom_dir / "invalid.nes"
+            unreadable = rom_dir / "unreadable.nes"
+
+            valid.write_bytes(make_ines_rom())
+            invalid.write_bytes(b"NOPE")
+            unreadable.write_bytes(make_ines_rom())
+
+            class FaultyLoader:
+                def load_file(self, path: Path):
+                    if path.name == "unreadable.nes":
+                        raise OSError("simulated read failure")
+                    from core.cartridge import CartridgeLoader
+
+                    return CartridgeLoader().load_file(path)
+
+            scanner = ROMScanner(loader=FaultyLoader())
+            found = scanner.scan_directories([rom_dir])
+
+            self.assertEqual([item.file_name for item in found], ["valid.nes"])
+
     def test_library_refresh_rescans_and_sorts_roms(self):
         with tempfile.TemporaryDirectory() as td:
             rom_dir = Path(td)
