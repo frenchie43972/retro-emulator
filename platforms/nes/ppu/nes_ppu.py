@@ -44,6 +44,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self.current_scanline = 0
         self.current_cycle = 0
         self._frame_ready = False
+        self._debug_frame_counter = 0
         self.ppu_cycles_per_cpu_cycle = 3
         self._debug_frame_completion = os.getenv("NES_PPU_DEBUG", "0") in {"1", "true", "TRUE", "on", "ON"}
         self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=b"\x00" * (NES_WIDTH * NES_HEIGHT * 3))
@@ -68,6 +69,7 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self.current_scanline = 0
         self.current_cycle = 0
         self._frame_ready = False
+        self._debug_frame_counter = 0
 
     def step(self, cycles: int) -> None:
         for _ in range(cycles):
@@ -182,17 +184,20 @@ class NESPPU(VideoProcessor, MemoryDevice):
     def _complete_frame(self) -> None:
         self._render_frame()
         self._frame_ready = True
+        self._debug_frame_counter += 1
         if self._debug_frame_completion:
-            print("[ppu] frame completed")
+            print(f"[ppu] frame #{self._debug_frame_counter} completed")
 
     def _render_background(self) -> list[list[int]]:
         self.registers.vram_addr = self.registers._temp_addr & 0x3FFF
+        scroll_x = ((self.registers.vram_addr & 0x001F) << 3) | self.registers.fine_x
+        scroll_y = ((self.registers.vram_addr >> 12) & 0x07) | (((self.registers.vram_addr >> 5) & 0x1F) << 3)
         return self.background_renderer.render(
             self.memory,
             ctrl=self.registers.ctrl,
             mask=self.registers.mask,
-            scroll_x=((self.registers.vram_addr & 0x001F) << 3) | self.registers.fine_x,
-            scroll_y=((self.registers.vram_addr >> 12) & 0x07) | (((self.registers.vram_addr >> 5) & 0x1F) << 3),
+            scroll_x=scroll_x,
+            scroll_y=scroll_y,
             width=NES_WIDTH,
             height=NES_HEIGHT,
         )
