@@ -48,6 +48,8 @@ class NESPPU(VideoProcessor, MemoryDevice):
         self._debug_frame_completion = os.getenv("NES_PPU_DEBUG", "0") in {"1", "true", "TRUE", "on", "ON"}
         self._frame = FrameBuffer(width=NES_WIDTH, height=NES_HEIGHT, pixels=b"\x00" * (NES_WIDTH * NES_HEIGHT * 3))
         self._frame_sink: Callable[[FrameBuffer], None] | None = None
+        self._nmi_callback: Callable[[], None] | None = None
+        self._debug_vblank = os.getenv("NES_PPU_DEBUG", "0") in {"1", "true", "TRUE", "on", "ON"}
 
     def set_cartridge(self, cartridge: LoadedCartridge | None) -> None:
         self.memory.set_cartridge(cartridge)
@@ -56,18 +58,30 @@ class NESPPU(VideoProcessor, MemoryDevice):
         """Set optional callback invoked whenever a frame finishes rendering."""
         self._frame_sink = frame_sink
 
+    def set_nmi_callback(self, callback: Callable[[], None] | None) -> None:
+        """Set callback invoked when PPU requests an NMI on VBlank start."""
+        self._nmi_callback = callback
+
     def reset(self) -> None:
         self.registers.reset()
         self.sprite_system.reset()
         self.current_scanline = 0
         self.current_cycle = 0
         self._frame_ready = False
-        self.registers.set_vblank(False)
 
     def step(self, cycles: int) -> None:
         for _ in range(cycles):
             if self.current_scanline == 241 and self.current_cycle == 1:
                 self.registers.set_vblank(True)
+                if self._debug_vblank:
+                    print("[ppu] vblank started")
+                if (self.registers.ctrl & 0x80) and self._nmi_callback is not None:
+                    self._nmi_callback()
+                    if self._debug_vblank:
+                        print("[ppu] nmi triggered")
+
+            if self.current_scanline == 261 and self.current_cycle == 1:
+                self.registers.set_vblank(False)
 
             if self.current_scanline == 261 and self.current_cycle == 340:
                 self._complete_frame()
@@ -163,7 +177,6 @@ class NESPPU(VideoProcessor, MemoryDevice):
     def _complete_frame(self) -> None:
         self._render_frame()
         self._frame_ready = True
-        self.registers.set_vblank(False)
         if self._debug_frame_completion:
             print("[ppu] frame completed")
 

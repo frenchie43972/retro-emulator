@@ -247,6 +247,40 @@ class NESPPUTimingTests(unittest.TestCase):
         self.assertEqual(ppu.current_scanline, 0)
         self.assertEqual(ppu.current_cycle, 0)
 
+    def test_ppu_sets_and_clears_vblank_flag_during_frame_timing(self):
+        platform = PluginLoader().load("nes")
+        ppu = platform.video
+
+        ppu.step((241 * 341) + 2)
+        self.assertTrue(ppu.registers.status & 0x80)
+
+        ppu.read(0x2002)
+        self.assertFalse(ppu.registers.status & 0x80)
+
+        ppu.step((20 * 341) + 2)
+        self.assertFalse(ppu.registers.status & 0x80)
+
+    def test_ppu_triggers_cpu_nmi_when_vblank_starts_and_enabled(self):
+        platform = PluginLoader().load("nes")
+        ppu = platform.video
+        cpu = platform.cpu
+
+        platform.cartridge.load(make_bootable_ines_rom())
+        platform.cartridge.attach_to_bus(platform.bus)
+        platform.reset()
+
+        cpu.program_counter = 0xC000
+        cpu.status = 0
+        ppu.write(0x2000, 0x80)
+
+        ppu.step((241 * 341) + 2)
+
+        self.assertEqual(cpu.program_counter, 0xEAEA)
+        self.assertEqual(cpu.stack_pointer, 0xFA)
+        self.assertEqual(platform.bus.read(0x01FD), 0xC0)
+        self.assertEqual(platform.bus.read(0x01FC), 0x00)
+        self.assertEqual(platform.bus.read(0x01FB), 0x20)
+
     def test_runtime_advances_nes_ppu_at_three_to_one_ratio(self):
         platform = PluginLoader().load("nes")
         video_out = FrameBufferVideoOutput()
