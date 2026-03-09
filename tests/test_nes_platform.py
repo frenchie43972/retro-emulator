@@ -224,6 +224,20 @@ class NESControllerInputTests(unittest.TestCase):
 
         self.assertEqual(reads, [1, 1, 1, 1])
 
+    def test_bus_uses_same_controller_instance_as_platform_input(self):
+        platform = PluginLoader().load("nes")
+
+        self.assertIs(platform.memory_map.controllers.controller1, platform.controller)
+
+        platform.controller.set_button_state("enter", True)
+        platform.bus.write(0x4016, 0x01)
+        platform.bus.write(0x4016, 0x00)
+
+        reads = [platform.bus.read(0x4016) for _ in range(4)]
+
+        self.assertEqual(reads, [0, 0, 0, 1])
+
+
 
 
     def test_sprite_rendering_uses_oam_priority_order(self):
