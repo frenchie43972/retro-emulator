@@ -175,6 +175,38 @@ class NESMemoryMapTests(unittest.TestCase):
         platform.bus.write(0x2003, 0x10)
         self.assertEqual(platform.bus.read(0x2004), 0xAA)
 
+    def test_ppuscroll_writes_update_temp_address_and_fine_x(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2005, 0x1D)
+        platform.bus.write(0x2005, 0x2A)
+
+        regs = platform.ppu.registers
+        self.assertEqual(regs.fine_x, 0x05)
+        self.assertEqual(regs._temp_addr & 0x001F, 0x03)
+        self.assertEqual((regs._temp_addr >> 5) & 0x1F, 0x05)
+        self.assertEqual((regs._temp_addr >> 12) & 0x07, 0x02)
+
+    def test_ppuaddr_and_ppuscroll_share_write_latch(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2005, 0x04)
+        platform.bus.write(0x2006, 0x21)
+
+        self.assertEqual(platform.ppu.registers.vram_addr, 0x0021)
+        self.assertFalse(platform.ppu.registers._write_toggle)
+
+    def test_ppustatus_read_resets_ppuscroll_latch(self):
+        platform = PluginLoader().load("nes")
+
+        platform.bus.write(0x2005, 0x22)
+        _ = platform.bus.read(0x2002)
+        platform.bus.write(0x2005, 0x1B)
+
+        regs = platform.ppu.registers
+        self.assertEqual(regs.fine_x, 0x03)
+        self.assertEqual(regs._temp_addr & 0x001F, 0x03)
+
     def test_ppustatus_read_resets_ppuaddr_latch(self):
         platform = PluginLoader().load("nes")
 
