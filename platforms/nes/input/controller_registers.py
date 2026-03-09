@@ -18,6 +18,9 @@ class ControllerRegisters(MemoryDevice):
     _read_index_p1: int = 0
     _strobe: int = 0
 
+    def __post_init__(self) -> None:
+        self._latched_state_p1 = self.controller1.snapshot()
+
     def read(self, address: int) -> int:
         if address == 0:
             return self._read_port1()
@@ -28,10 +31,13 @@ class ControllerRegisters(MemoryDevice):
     def write(self, address: int, value: int) -> None:
         if address != 0:
             return
-        self._strobe = value & 0x01
-        if self._strobe == 1:
+        next_strobe = value & 0x01
+        if next_strobe == 1:
+            self._read_index_p1 = 0
+        elif self._strobe == 1 and next_strobe == 0:
             self._latched_state_p1 = self.controller1.snapshot()
             self._read_index_p1 = 0
+        self._strobe = next_strobe
 
     def _read_port1(self) -> int:
         if self._strobe:
