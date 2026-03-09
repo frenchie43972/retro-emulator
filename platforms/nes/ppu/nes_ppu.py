@@ -202,11 +202,15 @@ class NESPPU(VideoProcessor, MemoryDevice):
         cursor = 0
         for y in range(NES_HEIGHT):
             for x in range(NES_WIDTH):
-                sprite_color_index = sprite_frame[y][x]
-                if sprite_color_index == 0:
-                    palette_address = 0x3F00 + (background_frame[y][x] & 0x0F)
+                sprite_pixel = sprite_frame[y][x]
+                sprite_color_index = sprite_pixel & 0x0F
+                sprite_behind_bg = bool(sprite_pixel & 0x80)
+                bg_color_index = background_frame[y][x] & 0x0F
+
+                if sprite_color_index == 0 or (sprite_behind_bg and bg_color_index != 0):
+                    palette_address = 0x3F00 + bg_color_index
                 else:
-                    palette_address = 0x3F10 + (sprite_color_index & 0x0F)
+                    palette_address = 0x3F10 + sprite_color_index
                 palette_entry = self.memory.read(palette_address)
                 r, g, b = NES_PALETTE[palette_entry & 0x3F]
                 pixels[cursor : cursor + 3] = bytes((r, g, b))

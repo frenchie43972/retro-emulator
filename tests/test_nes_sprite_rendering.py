@@ -54,6 +54,49 @@ class NESSpriteRenderingTests(unittest.TestCase):
 
         self.assertEqual(sprite_pixel, bytes((84, 90, 0)))
 
+    def test_priority_bit_puts_sprite_behind_nonzero_background(self):
+        ppu = NESPPU()
+        ppu.registers.ctrl = 0x00
+        ppu.registers.mask = 0x18
+
+        # Background tile at (0, 0) uses visible color index 1.
+        ppu.memory.write(0x2000, 0x01)
+        self._set_solid_tile(ppu, 0x01, 0x01)
+
+        # Sprite has non-zero pixel but priority bit set (behind background).
+        self._set_solid_tile(ppu, 0x02, 0x02)
+        ppu.sprite_system.oam[0:4] = bytes((0x00, 0x02, 0x20, 0x00))
+
+        ppu.memory.write(0x3F01, 0x18)  # Background visible color.
+        ppu.memory.write(0x3F12, 0x21)  # Sprite color if it were in front.
+
+        ppu._render_frame()
+        pixel = ppu._frame.pixels[(1 * 256) * 3 : (1 * 256) * 3 + 3]
+
+        # Background color should win because it is non-zero.
+        self.assertEqual(pixel, bytes((84, 90, 0)))
+
+    def test_priority_bit_still_draws_when_background_color_is_zero(self):
+        ppu = NESPPU()
+        ppu.registers.ctrl = 0x00
+        ppu.registers.mask = 0x18
+
+        # Background tile with all pixels at color 0 (transparent backdrop).
+        ppu.memory.write(0x2000, 0x01)
+        self._set_solid_tile(ppu, 0x01, 0x00)
+
+        # Sprite has priority bit set but should still render over bg color 0.
+        self._set_solid_tile(ppu, 0x02, 0x02)
+        ppu.sprite_system.oam[0:4] = bytes((0x00, 0x02, 0x20, 0x00))
+
+        ppu.memory.write(0x3F00, 0x0F)
+        ppu.memory.write(0x3F12, 0x21)
+
+        ppu._render_frame()
+        pixel = ppu._frame.pixels[(1 * 256) * 3 : (1 * 256) * 3 + 3]
+
+        self.assertEqual(pixel, bytes((76, 154, 236)))
+
     def test_lower_oam_index_sprite_is_drawn_on_top(self):
         ppu = NESPPU()
         ppu.registers.ctrl = 0x00
