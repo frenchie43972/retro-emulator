@@ -25,6 +25,8 @@ class MenuInputHandler:
             return MenuAction(name="move", delta=1)
         if key == pygame.K_RETURN:
             return MenuAction(name="launch")
+        if key == pygame.K_r:
+            return MenuAction(name="refresh")
         if key == pygame.K_ESCAPE:
             return MenuAction(name="exit")
         return MenuAction(name="noop")
