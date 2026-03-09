@@ -66,5 +66,8 @@ class BackgroundRenderer:
                 palette_index = (attribute_byte >> palette_shift) & 0x03
 
                 pixel_value = self._decode_row(plane0, plane1)[fine_x]
-                frame[y][x] = pixel_value | (palette_index << 2)
+                if pixel_value == 0:
+                    frame[y][x] = 0
+                else:
+                    frame[y][x] = pixel_value | (palette_index << 2)
         return frame

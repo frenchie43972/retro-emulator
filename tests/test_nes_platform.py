@@ -3,6 +3,7 @@ import unittest
 from emulator.io import BufferedAudioOutput, FrameBufferVideoOutput, KeyboardInputProvider
 from emulator.plugin import PluginLoader
 from emulator.runtime import EmulatorRuntime
+from platforms.nes.ppu.nes_ppu import NESPPU
 
 
 def make_bootable_ines_rom(*, reset_vector: int = 0xC000) -> bytes:
@@ -392,6 +393,28 @@ class NESAPUTests(unittest.TestCase):
         self.assertTrue(platform.audio.triangle.enabled)
         self.assertTrue(platform.audio.noise.enabled)
         self.assertTrue(platform.audio.dmc.enabled)
+
+
+class NESPaletteRenderTests(unittest.TestCase):
+    def test_render_looks_up_palette_ram_for_background_pixels(self):
+        ppu = NESPPU()
+        ppu.registers.mask = 0x08
+
+        # Top-left nametable entry points to tile index 1.
+        ppu.memory.write(0x2000, 0x01)
+
+        # Tile #1 has pixel value 1 everywhere.
+        for row in range(8):
+            ppu.memory.write(0x0010 + row, 0xFF)
+            ppu.memory.write(0x0010 + row + 8, 0x00)
+
+        # Palette slot 1 maps to hardware color 0x21.
+        ppu.memory.write(0x3F01, 0x21)
+
+        ppu._render_frame()
+
+        pixel = ppu.consume_frame().pixels[0:3]
+        self.assertEqual(pixel, bytes((76, 154, 236)))
 
 
 if __name__ == "__main__":

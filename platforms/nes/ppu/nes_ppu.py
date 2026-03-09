@@ -190,13 +190,10 @@ class NESPPU(VideoProcessor, MemoryDevice):
 
         pixels = bytearray(NES_WIDTH * NES_HEIGHT * 3)
         cursor = 0
-        grayscale = ((0, 0, 0), (85, 85, 85), (170, 170, 170), (255, 255, 255))
         for row in frame_indexes:
-            for palette_index in row:
-                if 0 <= palette_index <= 3:
-                    r, g, b = grayscale[palette_index]
-                else:
-                    r, g, b = NES_PALETTE[palette_index & 0x3F]
+            for color_index in row:
+                palette_entry = self.memory.read(0x3F00 + (color_index & 0x0F))
+                r, g, b = NES_PALETTE[palette_entry & 0x3F]
                 pixels[cursor : cursor + 3] = bytes((r, g, b))
                 cursor += 3
 
